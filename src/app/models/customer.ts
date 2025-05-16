@@ -6,6 +6,7 @@ export interface Customer {
   phoneNumber: string;
   firstAccess: Date;
   birthdate: Date;
+  address: string;
 }
 
 export interface TableCustomer {

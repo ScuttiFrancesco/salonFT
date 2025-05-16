@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, input, output } from '@angular/core';
 
 import { MatButton, MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -9,8 +9,6 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
   imports: [MatButtonModule, MatIconModule, FormsModule],
   template: `
-    <div class="title">Lista Clienti</div>
-
     <div class="table-container">
       <table>
         <thead>
@@ -20,7 +18,7 @@ import { FormsModule } from '@angular/forms';
               {{ col }}
             </th>
             }
-            <th>Azioni</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -34,10 +32,10 @@ import { FormsModule } from '@angular/forms';
             <td>
               <button><mat-icon class="edit">edit</mat-icon></button>
               <button><mat-icon class="delete">delete</mat-icon></button>
-              <button><mat-icon class="info">info</mat-icon></button>
+              <button><mat-icon class="info" (click)="info.emit(riga.id)">info</mat-icon></button>
             </td>
           </tr>
-          }
+          }@empty { Nessun dato disponibile }
         </tbody>
       </table>
       <div class="pagination">
@@ -67,13 +65,7 @@ import { FormsModule } from '@angular/forms';
  background-color:rgba(219, 219, 219, 0.15);
  }
 
- .title {
- font-size: 1.75rem;
- font-weight: 500;
- margin: 20px;
- text-align: center;
- color: rgb(75, 75, 75);;
- }
+ 
 
  th,td {
 
@@ -91,6 +83,8 @@ import { FormsModule } from '@angular/forms';
  mat-icon {
  font-size: 1.75rem;
  cursor: pointer;
+ margin: 0 5px;
+ 
  }
  .delete{
  color: rgb(138, 1, 1);
@@ -109,7 +103,7 @@ import { FormsModule } from '@angular/forms';
  border: none;
  cursor: pointer;
  padding: 0;
- margin: 4px;
+ margin: 4px 0;
  }
  button:hover {
  background-color: rgba(0, 0, 0, 0.1);
@@ -134,9 +128,10 @@ import { FormsModule } from '@angular/forms';
 export class TableComponent {
   colonne = input.required<string[]>();
   righe = input.required<any>();
+  info= output<any>();
 
-  pageSizes = [10, 25, 50];
-  pageSize = 10;
+  pageSizes = [8, 16, 32];
+  pageSize = 8;
   pageIndex = 0;
 
   get totalPages(): number {
