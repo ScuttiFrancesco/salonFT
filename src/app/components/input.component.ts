@@ -40,7 +40,7 @@ import { MatIconModule } from '@angular/material/icon';
     .custom-input {
       padding-right: 32px;
       height: 36px;
-      font-size: 0.75rem;
+      font-size: 1rem;
       border-radius: 5px;
       border: 1px solid #ccc;
       width: 100%;
@@ -56,8 +56,8 @@ import { MatIconModule } from '@angular/material/icon';
     }
     .input-message {
       margin-top: 4px;
-      font-size: 1rem;
-      color: #666;
+      font-size: 0.75rem;
+      color: rgba(138, 1, 1, 0.7);
       padding-left: 2px;
     }
   `
@@ -65,5 +65,5 @@ import { MatIconModule } from '@angular/material/icon';
 export class InputComponent {
   placeholder= input.required<string>();
   input= input.required<FormControl>();
-  messaggio= input.required<string>();
+  messaggio= input<string>();
 }

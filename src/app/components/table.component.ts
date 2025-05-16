@@ -30,7 +30,7 @@ import { FormsModule } from '@angular/forms';
             </td>
             }
             <td>
-              <button><mat-icon class="edit">edit</mat-icon></button>
+              
               <button><mat-icon class="delete">delete</mat-icon></button>
               <button><mat-icon class="info" (click)="info.emit(riga.id)">info</mat-icon></button>
             </td>

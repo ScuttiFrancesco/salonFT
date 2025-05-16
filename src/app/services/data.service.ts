@@ -60,4 +60,22 @@ export class DataService {
       },
     });
   }
+
+  updateData(type: string, id: number, data: any) {
+    this.http.put<any>(`${API_URL}/${type}/${id}`, data).subscribe({
+      next: (response) => {
+        if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
+          this.customers.set(
+            this.customers().map((customer) =>
+              customer.id === id ? { ...customer, ...data } : customer
+            )
+          );
+          console.log('Customer updated successfully:', response);
+        }
+      },
+      error: (error) => {
+        console.error('Error updating customer:', error);
+      },
+    });
+  }
 }

@@ -59,6 +59,7 @@ import { CustomerDetailComponent } from "./customer-detail.component";
     <app-customer-detail
     [customer]="customer()"
     (close)="showCustomerDetail = false"
+    (update)="updateCustomer($event)"
     />}
   `,
   styles: `
@@ -163,5 +164,10 @@ export class CustomerListComponent implements OnInit {
       DataType[DataType.CUSTOMER].toLowerCase(),idCustomer
     );
     this.showCustomerDetail = true;
+  }
+
+  updateCustomer(customer: Customer) {
+    
+    this.showCustomerDetail = false;
   }
 }
