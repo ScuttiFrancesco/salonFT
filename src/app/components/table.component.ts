@@ -1,6 +1,6 @@
 import { Component, input, output } from '@angular/core';
 
-import { MatButton, MatButtonModule } from '@angular/material/button';
+import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { FormsModule } from '@angular/forms';
 
@@ -29,9 +29,8 @@ import { FormsModule } from '@angular/forms';
               {{ cella }}
             </td>
             }
-            <td>
-              
-              <button><mat-icon class="delete">delete</mat-icon></button>
+            <td>             
+              <button><mat-icon class="delete" (click)="delete.emit(riga.id)">delete</mat-icon></button>
               <button><mat-icon class="info" (click)="info.emit(riga.id)">info</mat-icon></button>
             </td>
           </tr>
@@ -42,7 +41,9 @@ import { FormsModule } from '@angular/forms';
         <button (click)="prevPage()" [disabled]="pageIndex === 0">
           <mat-icon>chevron_left</mat-icon>
         </button>
-        <span class="pag"> {{ pageIndex + 1 }} </span>
+        @if(pageIndex > 0){
+       <span class="pag" (click)="pageIndex = 0"> 1 </span><mat-icon class="more">more_horiz</mat-icon> }<span style="color: brown; font-weight: bold"> {{ pageIndex + 1 }} </span> 
+       @if(pageIndex + 1 < totalPages){<mat-icon class="more">more_horiz</mat-icon><span class="pag" (click)="pageIndex = totalPages - 1"> {{ totalPages }} </span>}
         <button (click)="nextPage()" [disabled]="pageIndex >= totalPages - 1">
           <mat-icon>chevron_right</mat-icon>
         </button>
@@ -129,6 +130,7 @@ export class TableComponent {
   colonne = input.required<string[]>();
   righe = input.required<any>();
   info= output<any>();
+  delete = output<any>();
 
   pageSizes = [8, 16, 32];
   pageSize = 8;

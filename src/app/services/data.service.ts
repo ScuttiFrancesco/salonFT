@@ -78,4 +78,34 @@ export class DataService {
       },
     });
   }
+
+  insertData(type: string, data: any) {
+    this.http.post<any>(`${API_URL}/${type}`, data).subscribe({
+      next: (response) => {
+        if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
+          this.customers.set([...this.customers(), response]);
+          console.log('Customer inserted successfully:', response);
+        }
+      },
+      error: (error) => {
+        console.error('Error inserting customer:', error);
+      },
+    });
+  }
+
+  deleteData(type: string, id: number) {
+    this.http.delete<any>(`${API_URL}/${type}/${id}`).subscribe({
+      next: (response) => {
+        if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
+          this.customers.set(
+            this.customers().filter((customer) => customer.id !== id)
+          );
+          console.log('Customer deleted successfully:', response);
+        }
+      },
+      error: (error) => {
+        console.error('Error deleting customer:', error);
+      },
+    });
+  }
 }

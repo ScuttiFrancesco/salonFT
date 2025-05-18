@@ -1,4 +1,4 @@
-import { Component, computed, OnInit } from '@angular/core';
+import { Component, computed, OnInit, effect } from '@angular/core';
 import { TableComponent } from './table.component';
 import { DataService } from '../services/data.service';
 import { log } from 'console';
@@ -11,7 +11,8 @@ import { DataType } from '../models/constants';
 import { debounceTime } from 'rxjs/operators';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { InputComponent } from './input.component';
-import { CustomerDetailComponent } from "./customer-detail.component";
+import { CustomerDetailComponent } from './customer-detail.component';
+import { AlertModalComponent } from './alert-modal.component';
 
 @Component({
   selector: 'app-customer-list',
@@ -23,29 +24,26 @@ import { CustomerDetailComponent } from "./customer-detail.component";
     ReactiveFormsModule,
     MatIconModule,
     InputComponent,
-    CustomerDetailComponent
-],
+    CustomerDetailComponent,
+    AlertModalComponent,
+  ],
   template: `
     @defer (when righe.length > 0;) {
+    <div [style.opacity]="opacity">
     <div class="title">Lista Clienti</div>
+
     <div class="search-container">
-      <app-input
-        [placeholder]="'Nome o Cognome'"
-        [input]="nameInput"
-        [messaggio]="'Cerca per nome o cognome'"
-      />
-      <app-input
-        [placeholder]="'Email'"
-        [input]="emailInput"
-        [messaggio]="'Cerca per email'"
-      />
-      <app-input
-        [placeholder]="'Telefono'"
-        [input]="phoneInput"
-        [messaggio]="'Cerca per telefono'"
-      />
+      <app-input [placeholder]="'Cerca per nominativo'" [type]="'text'" />
+      <app-input [placeholder]="'Cerca per email'" [type]="'email'" />
+      <app-input [placeholder]="'Cerca per telefono'" [type]="'text'" />
+      <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>
     </div>
-    <app-table [colonne]="colonne" [righe]="righe" (info)="infoCustomer($event)"></app-table>
+    <app-table
+      [colonne]="colonne"
+      [righe]="righe"
+      (info)="infoCustomer($event)"
+      (delete)="delete($event)"
+    ></app-table></div>
     } @placeholder {
     <div class="loader-container">
       <mat-progress-spinner
@@ -54,15 +52,30 @@ import { CustomerDetailComponent } from "./customer-detail.component";
       ></mat-progress-spinner>
       <div class="loading">Loading...</div>
     </div>
-    }
-    @if (showCustomerDetail) {
+    } @if (showCustomerDetail) {
     <app-customer-detail
-    [customer]="customer()"
-    (close)="showCustomerDetail = false"
-    (update)="updateCustomer($event)"
-    />}
+      [customer]="customer()"
+      (close)="showCustomerDetail = false ; opacity = 1"
+      (update)="updateCustomer($event)"
+    />
+    } @if(showAlertModal){
+    <app-alert-modal
+      [confirmation]="true"
+      (confirm)="confirmDeleting($event)"
+      [message]="message"
+    />
+
+    }
   `,
   styles: `
+  .add{
+    font-size: 1.5rem;
+    color:rgb(255, 255, 255);
+    cursor: pointer;
+    background-color: rgb(0, 145, 29);
+    border-radius: 50px;
+    padding: 5px;
+  }
   .loader-container {
 display: flex;
 flex-direction: column;
@@ -95,19 +108,36 @@ margin: 20px;
 input {
   border-radius: 5px;
 }
+error-message {
+  color: red;
+  font-size: 0.8rem;
+}
   `,
 })
 export class CustomerListComponent implements OnInit {
   customers = computed(() => this.dataService.customers());
   customer = computed(() => this.dataService.customer());
-  colonne: string[] = ['Id','Nome', 'Cognome', 'Email', 'Telefono'];
+  colonne: string[] = ['Id', 'Nome', 'Cognome', 'Email', 'Telefono'];
   nameInput = new FormControl('');
   emailInput = new FormControl('');
   phoneInput = new FormControl('');
   showCustomerDetail = false;
-  
+  showAlertModal = false;
+  message: string = '';
+  deletingCustomerId: number|null = null;
+  opacity= 1;
 
-  constructor(private dataService: DataService) {}
+  constructor(private dataService: DataService) {
+    // effetto che scatta quando il customer signal cambia
+    effect(() => {
+      const c = this.dataService.customer();
+      if (this.deletingCustomerId != null && c.id === this.deletingCustomerId) {
+        this.message = `Sei sicuro di voler eliminare il cliente ${c.name} ${c.surname}?`;
+        this.showAlertModal = true;
+        this.deletingCustomerId = null;
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
@@ -140,18 +170,20 @@ export class CustomerListComponent implements OnInit {
         value ?? ''
       );
     });
-   
   }
 
   get righe(): TableCustomer[] {
-    const searchValue = this.nameInput.value?.trim() || this.emailInput.value?.trim() || this.phoneInput.value?.trim();
+    const searchValue =
+      this.nameInput.value?.trim() ||
+      this.emailInput.value?.trim() ||
+      this.phoneInput.value?.trim();
     const list =
       searchValue && searchValue.length > 0
         ? this.dataService.filtredCustomers()
         : this.dataService.customers();
     if (!list || !Array.isArray(list) || list.length === 0) return [];
     return list.map((customer) => ({
-      id: customer.id, 
+      id: customer.id,
       name: customer.name,
       surname: customer.surname,
       email: customer.email,
@@ -161,13 +193,54 @@ export class CustomerListComponent implements OnInit {
 
   infoCustomer(idCustomer: number) {
     this.dataService.getDataById(
-      DataType[DataType.CUSTOMER].toLowerCase(),idCustomer
+      DataType[DataType.CUSTOMER].toLowerCase(),
+      idCustomer
     );
     this.showCustomerDetail = true;
+    this.opacity = 0.5;
   }
 
   updateCustomer(customer: Customer) {
-    
+    if (!customer) return;
+    if (!customer.id) {
+      this.dataService.insertData(
+        DataType[DataType.CUSTOMER].toLowerCase(),
+        customer
+      );
+    } else {
+      this.dataService.updateData(
+        DataType[DataType.CUSTOMER].toLowerCase(),
+        customer.id,
+        customer
+      );
+    }
     this.showCustomerDetail = false;
+    this.opacity = 1;
+  }
+
+  formInsertCustomer() {
+    this.showCustomerDetail = true;
+    this.dataService.customer.set({} as Customer);
+    this.opacity = 0.5;
+  }
+
+  delete(idCustomer: number) {
+    this.deletingCustomerId = idCustomer;
+    this.dataService.getDataById(
+      DataType[DataType.CUSTOMER].toLowerCase(),
+      idCustomer
+    );
+    this.opacity = 0.5;
+  }
+
+  confirmDeleting(event: boolean) {
+    if (event) {
+      this.dataService.deleteData(
+        DataType[DataType.CUSTOMER].toLowerCase(),
+        this.customer().id
+      );
+    }
+    this.showAlertModal = false;
+    this.opacity = 1;
   }
 }
