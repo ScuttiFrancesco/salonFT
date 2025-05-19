@@ -13,8 +13,8 @@ import { RouterLink } from '@angular/router';
       <div>SALON</div>
       <span class="spacer"></span>
       <button mat-raised-button routerLink="/"> <mat-icon>home</mat-icon> Home</button>      
-      <button mat-raised-button routerLink="/services"> <mat-icon>event</mat-icon> Appointment</button>
-      <button mat-raised-button routerLink="/customer-list"> <mat-icon>people </mat-icon> Customer</button>
+      <button mat-raised-button routerLink="/appointment-list"> <mat-icon>event</mat-icon> Appuntamenti</button>
+      <button mat-raised-button routerLink="/customer-list"> <mat-icon>people </mat-icon> Clienti</button>
       <mat-icon>logout</mat-icon>
 
     </mat-toolbar>

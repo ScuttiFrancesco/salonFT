@@ -7,13 +7,13 @@ import { Component, input, output } from '@angular/core';
   template: `
     <div class="modal-container">
       <div class="modal-content">
-        <h2>
-          @if (alert()) { MESSAGGIO }@else if (confirmation()) { CONFERMA }
+        <h2 [style.color]="titleStyle()">
+         {{title()}}
         </h2>
         <p>{{ message() }}</p>
         <div class="buttons-container">
           <button class="close-button" (click)="confirm.emit(false)">
-            Cancel
+            Annulla
           </button>
           @if(confirmation()){
           <button class="delete-button" (click)="confirm.emit(true)">
@@ -26,9 +26,10 @@ import { Component, input, output } from '@angular/core';
 
     h2{
         font-weight: bold;        
-        font-size: 2rem;
+        font-size: 1.75rem;
         text-align: center;
         margin-bottom: 20px;
+        
     }
 
     .modal-container {
@@ -80,4 +81,6 @@ export class AlertModalComponent {
   confirmation = input<boolean>(false);
   confirm = output<boolean>();
   message = input.required<string>();
+  title = input.required<string>();
+  titleStyle = input<string>('brown');
 }

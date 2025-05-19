@@ -1,0 +1,267 @@
+import { Component, computed, OnInit, effect } from '@angular/core';
+import { TableComponent } from './table.component';
+import { DataService } from '../services/data.service';
+import { log } from 'console';
+import { interval } from 'rxjs';
+import { Customer, TableCustomer } from '../models/customer';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import {
+  FormBuilder,
+  FormControl,
+  FormGroup,
+  ReactiveFormsModule,
+} from '@angular/forms';
+import { DataType } from '../models/constants';
+import { debounceTime } from 'rxjs/operators';
+import { MatIcon, MatIconModule } from '@angular/material/icon';
+import { MatDatepickerModule } from '@angular/material/datepicker';
+import { InputComponent } from './input.component';
+import { CustomerDetailComponent } from './customer-detail.component';
+import { AlertModalComponent } from './alert-modal.component';
+import { ViewChild } from '@angular/core';
+import {
+  MAT_DATE_LOCALE,
+  MatNativeDateModule,
+  DateAdapter,
+  MAT_DATE_FORMATS,
+} from '@angular/material/core';
+import { LOCALE_ID } from '@angular/core';
+import { Appointment, TableAppointment } from '../models/appointment';
+
+// Formato date personalizzato per NativeDateAdapter
+const CUSTOM_NATIVE_DATE_FORMATS = {
+  parse: {
+    dateInput: { day: 'numeric', month: 'numeric', year: 'numeric' }, // Permette l'input come gg/mm/aaaa
+  },
+  display: {
+    dateInput: { day: '2-digit', month: '2-digit', year: 'numeric' }, // Visualizza come DD/MM/YYYY nell'input
+    monthYearLabel: { month: 'long', year: 'numeric' }, // Usa 'long' per il nome completo del mese
+    dateA11yLabel: { day: 'numeric', month: 'long', year: 'numeric' }, // Per accessibilità
+    monthYearA11yLabel: { month: 'long', year: 'numeric' }, // Per accessibilità
+  },
+};
+
+@Component({
+  selector: 'app-appointment-list',
+  standalone: true,
+  imports: [
+    TableComponent,
+    MatProgressSpinnerModule,
+    MatFormFieldModule,
+    ReactiveFormsModule,
+    MatIconModule,
+    InputComponent,
+    CustomerDetailComponent,
+    AlertModalComponent,
+    MatDatepickerModule,
+    MatNativeDateModule,
+  ],
+  providers: [
+    { provide: MAT_DATE_LOCALE, useValue: 'it-IT' },
+    { provide: LOCALE_ID, useValue: 'it-IT' },
+    { provide: MAT_DATE_FORMATS, useValue: CUSTOM_NATIVE_DATE_FORMATS },
+  ],
+  template: `
+    @defer (when righe.length > 0;) {
+    <div [style.opacity]="opacity">
+      <div class="title">Lista Appuntamenti</div>
+
+      <div class="search-container">
+        <app-input
+          [placeholder]="'Cerca per nominativo'"
+          [type]="'text'"
+          [formControl]="nameInput"
+        />
+        <mat-form-field appearance="fill" style="width: 300px;">
+          <mat-label>Inserisci un intervallo di date</mat-label>
+          <mat-date-range-input
+            [formGroup]="range"
+            [rangePicker]="picker"
+            [min]="minDate"
+            [max]="maxDate"
+          >
+            <input
+              matStartDate
+              formControlName="start"
+              placeholder="Data inizio"
+            />
+            <input
+              matEndDate
+              formControlName="end"
+              placeholder="Data fine"
+              (dateChange)="onDateChange()"
+            />
+          </mat-date-range-input>
+          <mat-datepicker-toggle
+            matSuffix
+            [for]="picker"
+          ></mat-datepicker-toggle>
+          <mat-date-range-picker #picker />
+        </mat-form-field>
+        <mat-icon class="add" (click)="formInsertAppointment()">add</mat-icon>
+      </div>
+      <app-table
+        [icons]="['delete', 'info']"
+        [colonne]="colonne"
+        [righe]="righe"
+        (info)="infoAppointment($event)"
+        (delete)="delete($event)"
+      ></app-table>
+    </div>
+    } @placeholder {
+    <div class="loader-container">
+      <mat-progress-spinner
+        mode="indeterminate"
+        [diameter]="32"
+      ></mat-progress-spinner>
+      <div class="loading">Caricamento...</div>
+    </div>
+    } @if (showAppointmentDetail) {
+    <app-customer-detail
+      [customer]="customer()"
+      (close)="showAppointmentDetail = false; opacity = 1"
+      (update)="updateCustomer($event)"
+    />
+    } @if(showAlertModal){
+    <app-alert-modal
+      [title]="'Elimina cliente'"
+      [confirmation]="true"
+      (confirm)="confirmDeleting($event)"
+      [message]="message"
+    />
+
+    }
+  `,
+  styles: `
+  .add{
+    font-size: 1.5rem;
+    color:rgb(255, 255, 255);
+    cursor: pointer;
+    background-color: rgb(0, 145, 29);
+    border-radius: 50px;
+    padding: 5px;
+  }
+  .loader-container {
+display: flex;
+flex-direction: column;
+align-items: center;
+justify-content: center;
+height: 200px;
+}
+mat-progress-spinner {
+margin: 0 0 10px 0;
+}
+.title {
+font-size: 1.75rem;
+font-weight: 500;
+margin: 20px;
+text-align: center;
+color: rgb(75, 75, 75);;
+}
+.search-container {
+display: flex;
+justify-content: space-around;
+align-items: center;
+flex-direction: row;
+margin: 20px;
+
+}
+input {
+  border-radius: 5px;
+}
+error-message {
+  color: red;
+  font-size: 0.8rem;
+}
+  `,
+})
+export class AppointmentListComponent implements OnInit {
+  infoAppointment($event: any) {
+    throw new Error('Method not implemented.');
+  }
+  updateCustomer($event: Customer) {
+    throw new Error('Method not implemented.');
+  }
+  onDateChange() {
+    throw new Error('Method not implemented.');
+  }
+  customers = computed(() => this.dataService.customers());
+  customer = computed(() => this.dataService.customer());
+  colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefono'];
+  nameInput = new FormControl('');
+  showAppointmentDetail = false;
+  showAlertModal = false;
+  message: string = '';
+  deletingCustomerId: number | null = null;
+  opacity = 1;
+  @ViewChild(TableComponent) tableComponent!: TableComponent;
+  minDate: unknown;
+  maxDate: unknown;
+  range: FormGroup<any>;
+
+  constructor(private dataService: DataService, private fb: FormBuilder) {
+    this.range = this.fb.group({
+      start: new FormControl(),
+      end: new FormControl(),
+    });
+  }
+  ngOnInit(): void {
+    
+  }
+
+  get righe(): TableAppointment[] {
+    const searchValue = this.nameInput.value?.trim();
+    const list =
+      searchValue && searchValue.length > 0
+        ? this.dataService.filtredAppointments()
+        : this.dataService.appointments();
+    if (!list || !Array.isArray(list) || list.length === 0) return [];
+
+    return list.map((appointment) => ({
+      id: appointment.id,
+      customerName:
+        appointment.customer?.name + ' ' + appointment.customer?.surname!,
+      date: new Date(appointment.date).toLocaleDateString('it-IT', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }),
+      time: new Date(appointment.date).toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      duration: appointment.duration + ' min',
+      phoneNumber: appointment.customer?.phoneNumber,
+    }));
+  }
+
+  formInsertAppointment() {
+    this.showAppointmentDetail = true;
+    this.dataService.appointment.set({} as TableAppointment);
+    this.opacity = 0.5;
+    if (this.tableComponent) {
+      this.tableComponent.pageIndex = 0;
+    }
+  }
+
+  delete(idCustomer: number) {
+    this.deletingCustomerId = idCustomer;
+    this.dataService.getDataById(
+      DataType[DataType.CUSTOMER].toLowerCase(),
+      idCustomer
+    );
+    this.opacity = 0.5;
+  }
+
+  confirmDeleting(event: boolean) {
+    if (event) {
+      this.dataService.deleteData(
+        DataType[DataType.CUSTOMER].toLowerCase(),
+        this.customer().id
+      );
+    }
+    this.showAlertModal = false;
+    this.opacity = 1;
+  }
+}

@@ -29,24 +29,27 @@ import { FormsModule } from '@angular/forms';
               {{ cella }}
             </td>
             }
-            <td>             
-              <button><mat-icon class="delete" (click)="delete.emit(riga.id)">delete</mat-icon></button>
-              <button><mat-icon class="info" (click)="info.emit(riga.id)">info</mat-icon></button>
+            <td>
+              @for(icon of icons(); track $index){
+              <button (click)="$any(this)[icon].emit(riga.id)">
+                <mat-icon [class]="icon">{{ icon }}</mat-icon>
+              </button>
+              }
             </td>
           </tr>
           }@empty { Nessun dato disponibile }
         </tbody>
       </table>
       <div class="pagination">
-        <button (click)="prevPage()" [disabled]="pageIndex === 0">
-          <mat-icon>chevron_left</mat-icon>
-        </button>
         @if(pageIndex > 0){
-       <span class="pag" (click)="pageIndex = 0"> 1 </span><mat-icon class="more">more_horiz</mat-icon> }<span style="color: brown; font-weight: bold"> {{ pageIndex + 1 }} </span> 
-       @if(pageIndex + 1 < totalPages){<mat-icon class="more">more_horiz</mat-icon><span class="pag" (click)="pageIndex = totalPages - 1"> {{ totalPages }} </span>}
-        <button (click)="nextPage()" [disabled]="pageIndex >= totalPages - 1">
-          <mat-icon>chevron_right</mat-icon>
-        </button>
+        <mat-icon (click)="prevPage()">chevron_left</mat-icon>
+        <mat-icon (click)="pageIndex = 0">first_page</mat-icon> }<span class="pag">
+          {{ pageIndex + 1 }}
+        </span>
+        @if(pageIndex < totalPages - 1){<mat-icon (click)="pageIndex = totalPages - 1">last_page</mat-icon>
+
+          <mat-icon (click)="nextPage()">chevron_right</mat-icon>
+          }
       </div>
     </div>
   `,
@@ -113,24 +116,29 @@ import { FormsModule } from '@angular/forms';
 
  .pag{
   border: 1px solid black;
-  border-radius: 50px;
+  border-radius: 5px;
   width: 25px;
   text-align: center;
   cursor: pointer;
+  color:brown;
+  font-weight: bold;
  }
   .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin: 20px;
+    margin: 10px;
+    gap: 10px;
   }
   `,
 })
 export class TableComponent {
   colonne = input.required<string[]>();
   righe = input.required<any>();
-  info= output<any>();
+  info = output<any>();
   delete = output<any>();
+  more_vert = output<any>();
+  icons = input<string[]>(['delete', 'info', 'more_vert']);
 
   pageSizes = [8, 16, 32];
   pageSize = 8;

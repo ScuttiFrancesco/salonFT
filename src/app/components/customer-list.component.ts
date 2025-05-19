@@ -13,6 +13,7 @@ import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { InputComponent } from './input.component';
 import { CustomerDetailComponent } from './customer-detail.component';
 import { AlertModalComponent } from './alert-modal.component';
+import { ViewChild } from '@angular/core';
 
 @Component({
   selector: 'app-customer-list',
@@ -33,12 +34,13 @@ import { AlertModalComponent } from './alert-modal.component';
     <div class="title">Lista Clienti</div>
 
     <div class="search-container">
-      <app-input [placeholder]="'Cerca per nominativo'" [type]="'text'" />
-      <app-input [placeholder]="'Cerca per email'" [type]="'email'" />
-      <app-input [placeholder]="'Cerca per telefono'" [type]="'text'" />
+      <app-input [placeholder]="'Cerca per nominativo'" [type]="'text'" [formControl]="nameInput"/>
+      <app-input [placeholder]="'Cerca per email'" [type]="'email'" [formControl]="emailInput"/>
+      <app-input [placeholder]="'Cerca per telefono'" [type]="'text'" [formControl]="phoneInput"/>
       <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>
     </div>
     <app-table
+    [icons]="['delete','info']"
       [colonne]="colonne"
       [righe]="righe"
       (info)="infoCustomer($event)"
@@ -50,7 +52,7 @@ import { AlertModalComponent } from './alert-modal.component';
         mode="indeterminate"
         [diameter]="32"
       ></mat-progress-spinner>
-      <div class="loading">Loading...</div>
+      <div class="loading">Caricamento...</div>
     </div>
     } @if (showCustomerDetail) {
     <app-customer-detail
@@ -60,6 +62,7 @@ import { AlertModalComponent } from './alert-modal.component';
     />
     } @if(showAlertModal){
     <app-alert-modal
+      [title]="'Elimina cliente'"
       [confirmation]="true"
       (confirm)="confirmDeleting($event)"
       [message]="message"
@@ -101,10 +104,6 @@ flex-direction: row;
 margin: 20px;
 
 }
-.input-container {
-  display: flex; 
-  flex-direction: column;
-}
 input {
   border-radius: 5px;
 }
@@ -126,9 +125,9 @@ export class CustomerListComponent implements OnInit {
   message: string = '';
   deletingCustomerId: number|null = null;
   opacity= 1;
+  @ViewChild(TableComponent) tableComponent!: TableComponent;
 
-  constructor(private dataService: DataService) {
-    // effetto che scatta quando il customer signal cambia
+  constructor(private dataService: DataService) {    
     effect(() => {
       const c = this.dataService.customer();
       if (this.deletingCustomerId != null && c.id === this.deletingCustomerId) {
@@ -138,12 +137,14 @@ export class CustomerListComponent implements OnInit {
       }
     });
   }
-
   ngOnInit(): void {
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.emailInput.setValue('', { emitEvent: false });
-        this.phoneInput.setValue('', { emitEvent: false });
+        this.phoneInput.setValue('', { emitEvent: false });        
+        if (this.tableComponent) {
+          this.tableComponent.pageIndex = 0;
+        }
       }
       this.dataService.getSearchedData(
         DataType[DataType.CUSTOMER].toLowerCase() + '/searchName',
@@ -154,6 +155,9 @@ export class CustomerListComponent implements OnInit {
       if (value) {
         this.nameInput.setValue('', { emitEvent: false });
         this.phoneInput.setValue('', { emitEvent: false });
+        if (this.tableComponent) {
+          this.tableComponent.pageIndex = 0;
+        }
       }
       this.dataService.getSearchedData(
         DataType[DataType.CUSTOMER].toLowerCase() + '/searchEmail',
@@ -164,6 +168,9 @@ export class CustomerListComponent implements OnInit {
       if (value) {
         this.nameInput.setValue('', { emitEvent: false });
         this.emailInput.setValue('', { emitEvent: false });
+        if (this.tableComponent) {
+          this.tableComponent.pageIndex = 0;
+        }
       }
       this.dataService.getSearchedData(
         DataType[DataType.CUSTOMER].toLowerCase() + '/searchPhoneNumber',
@@ -222,6 +229,9 @@ export class CustomerListComponent implements OnInit {
     this.showCustomerDetail = true;
     this.dataService.customer.set({} as Customer);
     this.opacity = 0.5;
+    if (this.tableComponent) {
+          this.tableComponent.pageIndex = 0;
+        }
   }
 
   delete(idCustomer: number) {
