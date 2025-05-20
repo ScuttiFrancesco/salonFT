@@ -19,9 +19,11 @@ import { first } from 'rxjs';
   template: `
     @if (customer()) {
     <div class="customer-detail-container">
-      <h2 class="customer-name">
-        {{ customer().name }} {{ customer().surname }}
+      
+      <h2 class="customer-name">@if (customer().id > 0) {
+        {{ customer().name }} {{ customer().surname }}}@else { Nuovo Cliente }
       </h2>
+
       <form [formGroup]="customerForm">
         @if (customer().id > 0) {
         <div class="customer-detail">

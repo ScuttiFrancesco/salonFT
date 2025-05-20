@@ -17,7 +17,7 @@ import { debounceTime } from 'rxjs/operators';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { InputComponent } from './input.component';
-import { CustomerDetailComponent } from './customer-detail.component';
+import { AppointmentDetailComponent } from './appointment-detail.component';
 import { AlertModalComponent } from './alert-modal.component';
 import { ViewChild } from '@angular/core';
 import {
@@ -28,6 +28,7 @@ import {
 } from '@angular/material/core';
 import { LOCALE_ID } from '@angular/core';
 import { Appointment, TableAppointment } from '../models/appointment';
+import { CustomerDetailComponent } from './customer-detail.component';
 
 // Formato date personalizzato per NativeDateAdapter
 const CUSTOM_NATIVE_DATE_FORMATS = {
@@ -52,10 +53,11 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
     ReactiveFormsModule,
     MatIconModule,
     InputComponent,
-    CustomerDetailComponent,
+    AppointmentDetailComponent,
     AlertModalComponent,
     MatDatepickerModule,
     MatNativeDateModule,
+    CustomerDetailComponent,
   ],
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'it-IT' },
@@ -97,8 +99,19 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
             matSuffix
             [for]="picker"
           ></mat-datepicker-toggle>
+          @if (range.get('start')?.value || range.get('end')?.value) {
+          <button
+            mat-icon-button
+            matSuffix
+            (click)="resetDateRange()"
+            aria-label="Clear date range"
+          >
+            <mat-icon>close</mat-icon>
+          </button>
+          }
           <mat-date-range-picker #picker />
         </mat-form-field>
+
         <mat-icon class="add" (click)="formInsertAppointment()">add</mat-icon>
       </div>
       <app-table
@@ -118,10 +131,9 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
       <div class="loading">Caricamento...</div>
     </div>
     } @if (showAppointmentDetail) {
-    <app-customer-detail
-      [customer]="customer()"
+    <app-appointment-detail
+      [appointment]="appointment()"
       (close)="showAppointmentDetail = false; opacity = 1"
-      (update)="updateCustomer($event)"
     />
     } @if(showAlertModal){
     <app-alert-modal
@@ -156,7 +168,7 @@ margin: 0 0 10px 0;
 font-size: 1.75rem;
 font-weight: 500;
 margin: 20px;
-text-align: center;
+//text-align: center;
 color: rgb(75, 75, 75);;
 }
 .search-container {
@@ -180,17 +192,14 @@ export class AppointmentListComponent implements OnInit {
   infoAppointment($event: any) {
     throw new Error('Method not implemented.');
   }
-  updateCustomer($event: Customer) {
-    throw new Error('Method not implemented.');
-  }
-  onDateChange() {
-    throw new Error('Method not implemented.');
-  }
+
+  
   customers = computed(() => this.dataService.customers());
-  customer = computed(() => this.dataService.customer());
+  appointment = computed(() => this.dataService.appointment());
   colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefono'];
   nameInput = new FormControl('');
   showAppointmentDetail = false;
+  showCustomerDetail = false;
   showAlertModal = false;
   message: string = '';
   deletingCustomerId: number | null = null;
@@ -207,7 +216,21 @@ export class AppointmentListComponent implements OnInit {
     });
   }
   ngOnInit(): void {
-    
+    this.dataService.getAllData(DataType[DataType.APPOINTMENT].toLowerCase());
+    this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
+      if (value) {
+        this.range.reset();
+        if (this.tableComponent) {
+          this.tableComponent.pageIndex = 0;
+        }
+
+        this.dataService.getSearchedData(
+          DataType[DataType.APPOINTMENT].toLowerCase() +
+            `/retrieveAll/customer`,
+          value ?? ''
+        );
+      }
+    });
   }
 
   get righe(): TableAppointment[] {
@@ -255,13 +278,76 @@ export class AppointmentListComponent implements OnInit {
   }
 
   confirmDeleting(event: boolean) {
-    if (event) {
+    /* if (event) {
       this.dataService.deleteData(
         DataType[DataType.CUSTOMER].toLowerCase(),
         this.customer().id
       );
     }
     this.showAlertModal = false;
-    this.opacity = 1;
+    this.opacity = 1; */
   }
+
+  private formatDate(date: Date): string {
+    const year = date.getFullYear();
+    const month = ('0' + (date.getMonth() + 1)).slice(-2);
+    const day = ('0' + date.getDate()).slice(-2);
+    return `${year}-${month}-${day}`;
+  }
+
+  resetDateRange() {
+    this.range.reset();
+    this.dataService.filtredAppointments.set([]);
+    if (this.tableComponent) {
+      this.tableComponent.pageIndex = 0;
+    }
+    if (this.nameInput.value) {
+      this.dataService.getSearchedData(
+        DataType[DataType.APPOINTMENT].toLowerCase() + `/retrieveAll/customer`,
+        this.nameInput.value ?? ''
+      );
+    } else {
+      this.dataService.getAllData(DataType[DataType.APPOINTMENT].toLowerCase());
+    }
+  }
+
+  onDateChange() {
+    const startDate = this.range.get('start')?.value;
+    const endDate = this.range.get('end')?.value;
+
+    console.log('Date range selected:', { startDate, endDate });
+
+    if (startDate && endDate && this.range.valid) {
+      const formattedStartDate = this.formatDate(new Date(startDate));
+      const formattedEndDate = this.formatDate(new Date(endDate));
+
+      if (this.dataService.filtredAppointments().length > 0) {
+        this.dataService.filtredAppointments.set(
+          this.dataService.filtredAppointments().filter((appointment) => {
+            const appointmentDate = new Date(appointment.date);
+            return (
+              appointmentDate >= new Date(startDate) &&
+              appointmentDate <= new Date(endDate)
+            );
+          })
+        );
+      } else {
+        this.dataService.getAllData(
+          DataType[DataType.APPOINTMENT].toLowerCase(),
+          `date-range=${formattedStartDate}/${formattedEndDate}`
+        );
+      }
+
+      if (this.tableComponent) {
+        this.tableComponent.pageIndex = 0;
+      }
+    } else if (!startDate && !endDate) {
+      this.dataService.filtredAppointments.set([]);
+      if (this.tableComponent) {
+        this.tableComponent.pageIndex = 0;
+      }
+    }
+  }
+
+  
 }

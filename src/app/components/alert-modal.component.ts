@@ -12,12 +12,18 @@ import { Component, input, output } from '@angular/core';
         </h2>
         <p>{{ message() }}</p>
         <div class="buttons-container">
-          <button class="close-button" (click)="confirm.emit(false)">
+         
+          @if(confirmation()){
+             <button class="close-button" (click)="confirm.emit(false)">
             Annulla
           </button>
-          @if(confirmation()){
           <button class="delete-button" (click)="confirm.emit(true)">
-            Confirm</button>}
+            Conferma</button>}
+          @else {
+             <button class="close-button" (click)="confirm.emit(false)">
+            Ok
+          </button>
+          }
         </div>
       </div>
     </div>

@@ -93,7 +93,7 @@ margin: 0 0 10px 0;
 font-size: 1.75rem;
 font-weight: 500;
 margin: 20px;
-text-align: center;
+//text-align: center;
 color: rgb(75, 75, 75);;
 }
 .search-container {

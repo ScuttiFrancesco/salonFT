@@ -42,13 +42,13 @@ import { FormsModule } from '@angular/forms';
       </table>
       <div class="pagination">
         @if(pageIndex > 0){
-        <mat-icon (click)="prevPage()">chevron_left</mat-icon>
-        <mat-icon (click)="pageIndex = 0">first_page</mat-icon> }<span class="pag">
+       <span> <mat-icon (click)="prevPage()">chevron_left</mat-icon></span>
+       <span> <mat-icon (click)="pageIndex = 0">first_page</mat-icon></span> <span> <mat-icon >more_horiz</mat-icon></span>}<span class="pag">
           {{ pageIndex + 1 }}
         </span>
-        @if(pageIndex < totalPages - 1){<mat-icon (click)="pageIndex = totalPages - 1">last_page</mat-icon>
-
-          <mat-icon (click)="nextPage()">chevron_right</mat-icon>
+        @if(pageIndex < totalPages - 1){<span> <mat-icon >more_horiz</mat-icon></span><span><mat-icon (click)="pageIndex = totalPages - 1">last_page</mat-icon></span>
+        
+         <span> <mat-icon (click)="nextPage()">chevron_right</mat-icon></span>
           }
       </div>
     </div>
@@ -128,7 +128,7 @@ import { FormsModule } from '@angular/forms';
     justify-content: center;
     align-items: center;
     margin: 10px;
-    gap: 10px;
+    
   }
   `,
 })

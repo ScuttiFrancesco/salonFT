@@ -23,8 +23,8 @@ export class DataService {
     this.getAllData(DataType[DataType.CUSTOMER].toLowerCase());
   }
 
-  getAllData(type: string) {
-    this.http.get<any>(`${API_URL}/${type}/retrieveAll`).subscribe({
+  getAllData(type: string, searchTerm: string = 'retrieveAll') {
+    this.http.get<any>(`${API_URL}/${type}/${searchTerm}`).subscribe({
       next: (response) => {
         if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
           this.customers.set(response);
@@ -52,10 +52,7 @@ export class DataService {
                     ...this.appointments(),
                     tableAppointment,
                   ]);
-                  console.log(
-                    'Appointments fetched successfully:',
-                    this.appointments()
-                  );
+                  
                 },
                 error: (error) => {
                   this.messaggioErrore.set(error.error.message);
@@ -131,9 +128,39 @@ export class DataService {
           );
         }
         if (type.includes(DataType[DataType.APPOINTMENT].toLowerCase())) {
-          this.filtredAppointments.set(response);
+        this.filtredAppointments.set([]);
+
+          response.forEach((appointment: Appointment) => {
+            this.http
+              .get<Customer>(`${API_URL}/customer/${appointment.customerId}`)
+              .subscribe({
+                next: (customer) => {
+                  const tableAppointment: TableAppointment = {
+                    id: appointment.id,
+                    date: appointment.date,
+                    duration: appointment.duration.toString(),
+                    service: appointment.service,
+                    notes: appointment.notes,
+                    customer: customer,
+                  };
+
+                  this.filtredAppointments.set([
+                    ...this.filtredAppointments(),
+                    tableAppointment,
+                  ]);
+                  
+                },
+                error: (error) => {
+                  this.messaggioErrore.set(error.error.message);
+                  console.error(
+                    'Error fetching customer for appointment:',
+                    error
+                  );
+                },
+              });
+          });
           console.log(
-            'Filtred Appointments fetched successfully:',
+            'Appointments fetched successfully:',
             this.filtredAppointments()
           );
         }
