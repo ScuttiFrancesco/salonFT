@@ -43,7 +43,7 @@ export class DataService {
                     id: appointment.id,
                     date: appointment.date,
                     duration: appointment.duration.toString(),
-                    service: appointment.service,
+                    services: appointment.services,
                     notes: appointment.notes,
                     customer: customer,
                   };
@@ -92,7 +92,7 @@ export class DataService {
                   id: response.id,
                   date: response.date,
                   duration: response.duration.toString(),
-                  service: response.service,
+                  services: response.services,
                   notes: response.notes,
                   customer: customer,
                 };
@@ -105,10 +105,10 @@ export class DataService {
                   error
                 );
               },
-            });
-          this.appointment.set(response);
-          console.log('Appointments fetched successfully:', this.appointment());
-        }
+            });         
+          }
+          
+          console.log('Appointment caricato successfully:', this.appointment());
       },
       error: (error) => {
         this.messaggioErrore.set(error.error.message);
@@ -139,7 +139,7 @@ export class DataService {
                     id: appointment.id,
                     date: appointment.date,
                     duration: appointment.duration.toString(),
-                    service: appointment.service,
+                    services: appointment.services,
                     notes: appointment.notes,
                     customer: customer,
                   };
@@ -192,7 +192,7 @@ export class DataService {
                   id: response.id,
                   date: response.date,
                   duration: response.duration.toString(),
-                  service: response.service,
+                  services: response.services,
                   notes: response.notes,
                   customer: customer,
                 };
@@ -231,6 +231,7 @@ export class DataService {
           console.log('Customer inserted successfully:', response);
         }
         if (type === DataType[DataType.APPOINTMENT].toLowerCase()) {
+          console.log('Appointment inserted:', response);
           this.http
             .get<Customer>(`${API_URL}/customer/${response.customerId}`)
             .subscribe({
@@ -239,7 +240,7 @@ export class DataService {
                   id: response.id,
                   date: response.date,
                   duration: response.duration.toString(),
-                  service: response.service,
+                  services: response.services,
                   notes: response.notes,
                   customer: customer,
                 };

@@ -11,12 +11,20 @@ import { RouterLink } from '@angular/router';
   template: `
     <mat-toolbar>
       <div>SALON</div>
+      <button mat-raised-button routerLink="/">
+        <mat-icon>home</mat-icon> Home
+      </button>
       <span class="spacer"></span>
-      <button mat-raised-button routerLink="/"> <mat-icon>home</mat-icon> Home</button>      
-      <button mat-raised-button routerLink="/appointment-list"> <mat-icon>event</mat-icon> Appuntamenti</button>
-      <button mat-raised-button routerLink="/customer-list"> <mat-icon>people </mat-icon> Clienti</button>
+      <button mat-raised-button routerLink="/calendar">
+        <mat-icon>date_range</mat-icon> Agenda
+      </button>
+      <button mat-raised-button routerLink="/appointment-list">
+        <mat-icon>call</mat-icon> Appuntamenti
+      </button>
+      <button mat-raised-button routerLink="/customer-list">
+        <mat-icon>people </mat-icon> Clienti
+      </button>
       <mat-icon>logout</mat-icon>
-
     </mat-toolbar>
   `,
   styles: `

@@ -62,7 +62,7 @@ import { ViewChild } from '@angular/core';
     />
     } @if(showAlertModal){
     <app-alert-modal
-      [title]="'Elimina cliente'"
+      [title]="'Elimina Cliente'"
       [confirmation]="true"
       (confirm)="confirmDeleting($event)"
       [message]="message"

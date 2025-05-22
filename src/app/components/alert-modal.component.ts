@@ -55,7 +55,7 @@ import { Component, input, output } from '@angular/core';
     display: flex;
     justify-content: center;
     align-items: center;
-    
+    z-index: 1001;
     }
   button {
     color: white;
@@ -67,19 +67,7 @@ import { Component, input, output } from '@angular/core';
     transition: background-color 0.3s;
     }
 
-    .close-button {
-    background-color:rgba(0, 0, 0, 0.65);
-    }
-    .close-button:hover {
-    background-color: rgba(0, 0, 0, 0.55);
-    }
-
-    .delete-button {
-    background-color:rgba(56, 0, 0, 0.75);
-    }
-    .delete-button:hover {
-    background-color: rgba(54, 0, 0, 0.65);
-    }
+   
   `,
 })
 export class AlertModalComponent {

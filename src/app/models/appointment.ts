@@ -6,7 +6,7 @@ export interface Appointment {
   customerId: number;
   date: string;
   duration: number;
-  service: string[];
+  services: string[];
   notes: string;
 }
 
@@ -17,5 +17,5 @@ export interface TableAppointment {
   date: string;
   duration: string;
   notes?: string;
-  service?: string[];
+  services?: string[];
 }

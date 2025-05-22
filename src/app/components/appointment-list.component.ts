@@ -134,10 +134,12 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
     <app-appointment-detail
       [appointment]="appointment()"
       (close)="showAppointmentDetail = false; opacity = 1"
+      (update)="updateAppointment($event)"
+      (delete)="delete($event)"
     />
     } @if(showAlertModal){
     <app-alert-modal
-      [title]="'Elimina cliente'"
+      [title]="'Elimina Appuntamento'"
       [confirmation]="true"
       (confirm)="confirmDeleting($event)"
       [message]="message"
@@ -189,11 +191,6 @@ error-message {
   `,
 })
 export class AppointmentListComponent implements OnInit {
-  infoAppointment($event: any) {
-    throw new Error('Method not implemented.');
-  }
-
-  
   customers = computed(() => this.dataService.customers());
   appointment = computed(() => this.dataService.appointment());
   colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefono'];
@@ -202,7 +199,7 @@ export class AppointmentListComponent implements OnInit {
   showCustomerDetail = false;
   showAlertModal = false;
   message: string = '';
-  deletingCustomerId: number | null = null;
+  deletingAppointmentId: number | null = null;
   opacity = 1;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
   minDate: unknown;
@@ -214,6 +211,30 @@ export class AppointmentListComponent implements OnInit {
       start: new FormControl(),
       end: new FormControl(),
     });
+    effect(() => {
+      const a = this.dataService.appointment();
+      if (
+        this.deletingAppointmentId != null &&
+        a.id === this.deletingAppointmentId
+      ) {
+         let formattedDate = 'data sconosciuta';
+        if (a.date) {
+          try {
+            const appointmentDate = new Date(a.date);
+            formattedDate = appointmentDate.toLocaleDateString('it-IT', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit'
+            });
+          } catch (error) {
+            console.error('Errore nella formattazione della data', error);
+          }
+        }
+        this.message = `Sei sicuro di voler eliminare appuntamento di ${a.customer?.name} ${a.customer?.surname} del ${formattedDate}?`;
+        this.showAlertModal = true;
+        this.deletingAppointmentId = null;
+      }
+    });
   }
   ngOnInit(): void {
     this.dataService.getAllData(DataType[DataType.APPOINTMENT].toLowerCase());
@@ -224,6 +245,14 @@ export class AppointmentListComponent implements OnInit {
           this.tableComponent.pageIndex = 0;
         }
 
+        this.dataService.getSearchedData(
+          DataType[DataType.APPOINTMENT].toLowerCase() +
+            `/retrieveAll/customer`,
+          value ?? ''
+        );
+      }else{
+        this.range.reset();
+        this.dataService.filtredAppointments.set([]);
         this.dataService.getSearchedData(
           DataType[DataType.APPOINTMENT].toLowerCase() +
             `/retrieveAll/customer`,
@@ -268,24 +297,25 @@ export class AppointmentListComponent implements OnInit {
     }
   }
 
-  delete(idCustomer: number) {
-    this.deletingCustomerId = idCustomer;
+  delete(idAppontment: number) {
+    this.deletingAppointmentId = idAppontment;
     this.dataService.getDataById(
-      DataType[DataType.CUSTOMER].toLowerCase(),
-      idCustomer
+      DataType[DataType.APPOINTMENT].toLowerCase(),
+      idAppontment
     );
     this.opacity = 0.5;
   }
 
   confirmDeleting(event: boolean) {
-    /* if (event) {
+ if (event) {
       this.dataService.deleteData(
-        DataType[DataType.CUSTOMER].toLowerCase(),
-        this.customer().id
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        this.appointment().id
       );
+      this.showAppointmentDetail = false;
     }
     this.showAlertModal = false;
-    this.opacity = 1; */
+    this.opacity = 1;
   }
 
   private formatDate(date: Date): string {
@@ -349,5 +379,30 @@ export class AppointmentListComponent implements OnInit {
     }
   }
 
-  
+  updateAppointment(appointment: Appointment) {
+    if (!appointment) return;
+    if (!appointment.id) {
+      this.dataService.insertData(
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        appointment
+      );
+    } else {
+      this.dataService.updateData(
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        appointment.id,
+        appointment
+      );
+    }
+    this.showAppointmentDetail = false;
+    this.opacity = 1;
+  }
+
+  infoAppointment(idAppontment: number) {
+    this.dataService.getDataById(
+      DataType[DataType.APPOINTMENT].toLowerCase(),
+      idAppontment
+    );
+    this.showAppointmentDetail = true;
+    this.opacity = 0.5;
+  }
 }

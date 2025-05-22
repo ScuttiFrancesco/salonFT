@@ -7,7 +7,7 @@ import { Component } from '@angular/core';
   template: `
     <div class="home-container">
       <header class="hero-section">
-        <img src="assets/images/salon-hero.jpg" alt="Salone di Bellezza" class="hero-image">
+        
         <div class="hero-text">
           <h1>Eleganza & Stile Quotidiano</h1>
           <p>Scopri la tua bellezza, ogni giorno.</p>
@@ -28,17 +28,16 @@ import { Component } from '@angular/core';
         <h2>Servizi in Evidenza</h2>
         <div class="services-grid">
           <div class="service-card">
-            <img src="assets/images/hair-service.jpg" alt="Servizio Capelli" class="service-image">
+           
             <h3>Taglio & Piega</h3>
             <p>Look moderni e classici per esaltare la tua personalità.</p>
           </div>
           <div class="service-card">
-            <img src="assets/images/nails-service.jpg" alt="Servizio Unghie" class="service-image">
+          
             <h3>Manicure & Pedicure</h3>
             <p>Cura e bellezza per le tue mani e i tuoi piedi.</p>
           </div>
           <div class="service-card">
-            <img src="assets/images/facial-service.jpg" alt="Servizio Viso" class="service-image">
             <h3>Trattamenti Viso</h3>
             <p>Soluzioni personalizzate per una pelle radiosa.</p>
           </div>

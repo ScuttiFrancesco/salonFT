@@ -4,10 +4,12 @@ import { DatePipe } from '@angular/common';
 import { MatIconModule } from '@angular/material/icon';
 import { InputComponent } from './input.component';
 import {
+  AbstractControl,
   FormBuilder,
   FormControl,
   FormGroup,
   ReactiveFormsModule,
+  ValidatorFn,
   Validators,
 } from '@angular/forms';
 import { Appointment, TableAppointment } from '../models/appointment';
@@ -101,7 +103,11 @@ import { FormsModule } from '@angular/forms';
             [placeholder]="'Data'"
             [type]="'date'"
             formControlName="date"
+            [messaggio]="dateControl.invalid && dateControl.touched ? 'Campo obbligatorio' : ''"
           />
+          @if (dateControl.hasError('dateInPast') && dateControl.touched) {
+            <div class="validation-error">La data non può essere nel passato</div>
+          }
         </div>
 
         <div class="customer-detail">
@@ -113,7 +119,11 @@ import { FormsModule } from '@angular/forms';
             [placeholder]="'Ora'"
             [type]="'time'"
             formControlName="time"
+            [messaggio]="dateControl.invalid && dateControl.touched ? 'Campo obbligatorio' : ''"
           />
+          @if (timeControl.hasError('timeOutOfRange') && timeControl.touched) {
+            <div class="validation-error">Orario consentito: {{ timeControl.getError('timeOutOfRange').allowed }}</div>
+          }
         </div>
 
         <div class="customer-detail">
@@ -127,6 +137,7 @@ import { FormsModule } from '@angular/forms';
             [placeholder]="'Durata (minuti)'"
             [type]="'number'"
             formControlName="duration"
+            [messaggio]="dateControl.invalid && dateControl.touched ? 'Campo obbligatorio' : ''"
           />
         </div>
 
@@ -143,17 +154,21 @@ import { FormsModule } from '@angular/forms';
           <strong>Servizi:</strong>
           <div class="services-container">
             @for (service of availableServices; track $index) {
-              <div 
-                class="service-chip" 
-                [class.selected]="isServiceSelected(service)"
-                (click)="toggleService(service)"
+            <div
+              class="service-chip"
+              [class.selected]="isServiceSelected(service)"
+              (click)="toggleService(service)"
+            >
+              <div class="service-name">{{ service }}</div>
+              <mat-icon
+                *ngIf="isServiceSelected(service)"
+                class="service-selected-icon"
+                >check_circle</mat-icon
               >
-                <div class="service-name">{{ service }}</div>
-                <mat-icon *ngIf="isServiceSelected(service)" class="service-selected-icon">check_circle</mat-icon>
-              </div>
-            }            
+            </div>
+            }
           </div>
-        </div>       
+        </div>
 
         <div class="buttons-container">
           <button class="close-button" type="button" (click)="close.emit()">
@@ -162,12 +177,23 @@ import { FormsModule } from '@angular/forms';
           <button
             type="button"
             (click)="saveAppointment()"
-            [disabled]="appointmentForm.invalid || selectedServices.length === 0"
-            [class]="appointmentForm.invalid || selectedServices.length === 0 ? 'disabled' : 'update-button'"
+            [disabled]="
+              appointmentForm.invalid || selectedServices.length === 0
+            "
+            [class]="
+              appointmentForm.invalid || selectedServices.length === 0
+                ? 'disabled'
+                : 'update-button'
+            "
           >
             @if(appointment().id > 0){ Salva Modifiche}@else { Inserisci
             Appuntamento }
           </button>
+          @if(appointment().id !== 0){
+             <button class="delete-button" type="button" (click)="delete.emit(appointment().id)">
+            Elimina
+          </button>
+          }
         </div>
       </form>
     </div>
@@ -199,6 +225,13 @@ import { FormsModule } from '@angular/forms';
       padding: 0;
     }
 
+    .validation-error {
+      color: red;
+      font-size: 0.8rem;
+      margin-top: 5px;
+      grid-column: 2;
+    }
+
     mat-icon {
       cursor: pointer;
       color: rgba(0, 0, 0, 0.51);
@@ -226,6 +259,7 @@ import { FormsModule } from '@angular/forms';
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
+      z-index: 1000;
     }
 
     .customer-detail {
@@ -246,19 +280,7 @@ import { FormsModule } from '@angular/forms';
       transition: background-color 0.3s;
     }
 
-    .close-button {
-      background-color:rgba(0, 0, 0, 0.65);
-    }
-    .close-button:hover {
-      background-color: rgba(0, 0, 0, 0.55);
-    }
-
-    .update-button {
-      background-color:rgba(0, 56, 0, 0.75);
-    }
-    .update-button:hover {
-      background-color: rgba(0, 54, 3, 0.65);
-    }
+   
 
     .customer-select-container {
       position: relative;
@@ -382,15 +404,16 @@ export class AppointmentDetailComponent {
   appointment = input.required<TableAppointment>();
   close = output<void>();
   update = output<Appointment>();
+  delete= output<number>();
   customer = {} as Customer;
   // Form controls
   customerSearch = new FormControl('');
   customerId = new FormControl('', Validators.required);
-  dateControl = new FormControl('', Validators.required);
-  timeControl = new FormControl('', Validators.required);
+  dateControl = new FormControl('', [Validators.required, this.dateNotInPastValidator()]);
+  timeControl = new FormControl('', [Validators.required, this.timeRangeValidator(8, 20)]);
   durationControl = new FormControl('', [
     Validators.required,
-    Validators.min(1),
+    Validators.min(30),
   ]);
   notesControl = new FormControl('');
 
@@ -404,10 +427,19 @@ export class AppointmentDetailComponent {
 
   // Servizi come semplici stringhe
   availableServices: string[] = [
-    'Taglio', 'Piega', 'Colore', 'Trattamento', 'Manicure', 'Meches', 'Lisciante','',''
-  ]; 
-  
+    'Taglio',
+    'Piega',
+    'Colore',
+    'Trattamento',
+    'Manicure',
+    'Meches',
+    'Lisciante',
+    
+    
+  ];
+
   selectedServices: string[] = [];
+
 
   constructor(private fb: FormBuilder, private dataService: DataService) {
     this.appointmentForm = this.fb.group({
@@ -429,11 +461,7 @@ export class AppointmentDetailComponent {
         map((value) => this._filterCustomers(value || ''))
       );
     });
-    
-    // In un'implementazione reale, otterremmo i servizi dal backend
-    // this.dataService.getServices().subscribe(services => {
-    //   this.availableServices = services;
-    // });
+
   }
 
   private _filterCustomers(value: string): Customer[] {
@@ -528,8 +556,8 @@ export class AppointmentDetailComponent {
     }
 
     // Aggiorna i servizi selezionati
-    if (a.service && Array.isArray(a.service)) {
-      this.selectedServices = [...a.service];
+    if (a.services && Array.isArray(a.services)) {
+      this.selectedServices = [...a.services];
     } else {
       this.selectedServices = [];
     }
@@ -540,25 +568,32 @@ export class AppointmentDetailComponent {
       return;
     }
 
-    // Combine date and time
+    // Combine date and time preservando l'orario locale
     const dateStr = this.dateControl.value || '';
     const timeStr = this.timeControl.value || '';
-    let appointmentDateTime: Date | null = null;
-
+    
     if (dateStr && timeStr) {
-      appointmentDateTime = new Date(`${dateStr}T${timeStr}`);
-    }
+      // Crea manualmente una stringa di data UTC-independent
+      const [year, month, day] = dateStr.split('-');
+      const [hours, minutes] = timeStr.split(':');
+      
+      // Costruisci una stringa ISO manuale che manterrà l'ora come specificata
+      const formattedDate = `${year}-${month}-${day}T${hours}:${minutes}:00.000`;
+      
+      const appointmentData: Appointment = {
+        id: this.appointment()?.id || 0,
+        date: formattedDate, // Usa la stringa formattata manualmente invece di toISOString()
+        customerId: parseInt(this.customerId.value || '0'),
+        duration: parseInt(this.durationControl.value || '0'),
+        services: this.selectedServices,
+        notes: this.notesControl.value || '',
+      };
 
-    const appointmentData: Appointment = {
-      id: this.appointment()?.id || 0,
-      date: appointmentDateTime!.toISOString() || new Date().toISOString(),
-      customerId: parseInt(this.customerId.value || '0'),
-      duration: parseInt(this.durationControl.value || '0'),
-      service: this.selectedServices, 
-      notes: this.notesControl.value || '',
-    };
-    console.log('Insert Appointment Data:', appointmentData);
-    //this.update.emit(appointmentData);
+      // Log dei dati prima di inviarli
+      console.log('Submitting appointment data:', appointmentData);
+
+      this.update.emit(appointmentData);
+    }
   }
 
   formInsertCustomer() {
@@ -568,28 +603,32 @@ export class AppointmentDetailComponent {
 
   updateCustomer(customer: Customer) {
     if (!customer) return;
-    
+
     if (!customer.id) {
       // Per un nuovo cliente, dobbiamo aspettare che il server restituisca l'ID
       this.dataService.insertData(
         DataType[DataType.CUSTOMER].toLowerCase(),
         customer
-      );      
+      );
       // Aggiungiamo un timeout per dare tempo al server di rispondere e al signal di aggiornarsi
       setTimeout(() => {
         // Cerca il cliente appena inserito per nome e cognome
-        const newCustomer = this.dataService.customers().find(
-          c => c.name.toLowerCase() === customer.name.toLowerCase() && 
-               c.surname.toLowerCase() === customer.surname.toLowerCase()
-        );
-        
+        const newCustomer = this.dataService
+          .customers()
+          .find(
+            (c) =>
+              c.name.toLowerCase() === customer.name.toLowerCase() &&
+              c.surname.toLowerCase() === customer.surname.toLowerCase()
+          );
+
         if (newCustomer) {
           this.customerId.setValue(newCustomer.id.toString());
-          this.customerSearch.setValue(`${newCustomer.name} ${newCustomer.surname}`);
+          this.customerSearch.setValue(
+            `${newCustomer.name} ${newCustomer.surname}`
+          );
           this.selectedCustomerPhone = newCustomer.phoneNumber || '';
         }
       }, 500); // Aspetta 500ms per dare tempo al server di rispondere
-      
     } else {
       // Aggiornamento di un cliente esistente
       this.dataService.updateData(
@@ -598,7 +637,7 @@ export class AppointmentDetailComponent {
         customer
       );
     }
-    
+
     this.showCustomerDetail = false;
   }
 
@@ -628,5 +667,41 @@ export class AppointmentDetailComponent {
 
   isServiceSelected(service: string): boolean {
     return this.selectedServices.includes(service);
+  }
+
+  dateNotInPastValidator(): ValidatorFn {
+    return (control: AbstractControl): { [key: string]: any } | null => {
+      const selectedDate = control.value ? new Date(control.value) : null;
+
+      if (!selectedDate) {
+        return null; // Se non c'è valore, non validare
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      selectedDate.setHours(0, 0, 0, 0);
+
+      return selectedDate < today ? { dateInPast: true } : null;
+    };
+  }
+
+  timeRangeValidator(startHour: number, endHour: number): ValidatorFn {
+    return (control: AbstractControl): { [key: string]: any } | null => {
+      const timeValue = control.value;
+
+      if (!timeValue) {
+        return null; // Se non c'è valore, non validare
+      }
+
+      const hourValue = parseInt(timeValue.split(':')[0], 10);
+
+      if (isNaN(hourValue) || hourValue < startHour || hourValue >= endHour) {
+        return {
+          timeOutOfRange: { allowed: `${startHour}:00 - ${endHour}:00` },
+        };
+      }
+
+      return null;
+    };
   }
 }

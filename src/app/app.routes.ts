@@ -21,4 +21,11 @@ export const routes: Routes = [
         (m) => m.AppointmentListComponent
       ),
   },
+  {
+    path: 'calendar',
+    loadComponent: () =>
+      import('./components/calendar.component').then(
+        (m) => m.CalendarComponent
+      ),
+  },
 ];
