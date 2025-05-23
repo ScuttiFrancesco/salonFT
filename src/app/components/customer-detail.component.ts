@@ -120,6 +120,11 @@ import { first } from 'rxjs';
           >
             @if(customer().id > 0){ Salva Modifiche}@else { Inserisci Cliente }
           </button>
+          @if(customer().id > 0){
+            <button class="delete-button" type="button" (click)="delete.emit(customer().id)">
+            Elimina
+          </button>
+          }
         </div>
       </form>
     </div>
@@ -205,6 +210,7 @@ export class CustomerDetailComponent {
   customer = input.required<Customer>();
   close = output<void>();
   update = output<Customer>();
+  delete = output<number>();
   nameControl = new FormControl('', Validators.required);
   surnameControl = new FormControl('', Validators.required);
   emailControl = new FormControl('', Validators.required);

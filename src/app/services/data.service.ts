@@ -18,9 +18,62 @@ export class DataService {
   filtredAppointments = signal<TableAppointment[]>([]);
   messaggioErrore = signal<string>('');
   messaggioSuccesso = signal<string>('');
+  pagSize = 10;
 
   constructor(private http: HttpClient) {
-    this.getAllData(DataType[DataType.CUSTOMER].toLowerCase());
+    
+  }
+
+  getAllDataPaginated(type : number, page: number, size: number, sortBy: number, sortDir: number) {
+    this.http
+      .get<any>(
+        `${API_URL}/${type}/retrieveAll/paginated?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+      )
+      .pipe(
+        map((response) => {
+          if (type === DataType.CUSTOMER) {
+            this.customers.set(response.data);
+            console.log('Customers fetched successfully:', response);
+          }
+          if (type === DataType.APPOINTMENT) {
+            this.appointments.set([]);
+
+            response.content.forEach((appointment: Appointment) => {
+              this.http
+                .get<Customer>(`${API_URL}/0/${appointment.customerId}`)
+                .subscribe({
+                  next: (customer) => {
+                    const tableAppointment: TableAppointment = {
+                      id: appointment.id,
+                      date: appointment.date,
+                      duration: appointment.duration.toString(),
+                      services: appointment.services,
+                      notes: appointment.notes,
+                      customer: customer,
+                    };
+
+                    this.appointments.set([
+                      ...this.appointments(),
+                      tableAppointment,
+                    ]);
+                  },
+                  error: (error) => {
+                    this.messaggioErrore.set(error.error.message);
+                    console.error(
+                      'Error fetching customer for appointment:',
+                      error
+                    );
+                  },
+                });
+            });
+            console.log(
+              'Appointments fetched successfully:',
+              this.appointments()
+            );
+          }
+        })
+      )
+      .subscribe();
   }
 
   getAllData(type: string, searchTerm: string = 'retrieveAll') {

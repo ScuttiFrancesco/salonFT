@@ -312,7 +312,6 @@ export class AppointmentListComponent implements OnInit {
         DataType[DataType.APPOINTMENT].toLowerCase(),
         this.appointment().id
       );
-      this.showAppointmentDetail = false;
     }
     this.showAlertModal = false;
     this.opacity = 1;

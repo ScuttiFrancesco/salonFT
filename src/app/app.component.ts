@@ -23,7 +23,8 @@ export class AppComponent {
   title = 'salonFT';
   messaggioErrore = computed(() => this.dataService.messaggioErrore());
   messaggioSuccesso = computed(() => this.dataService.messaggioSuccesso());
-  constructor(private dataService: DataService) {}
+  constructor(private dataService: DataService) {   
+  }
 
   closeAlert() {
     this.dataService.messaggioErrore.set('');

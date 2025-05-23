@@ -55,7 +55,7 @@ import { Component, input, output } from '@angular/core';
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1001;
+    z-index: 2001;
     }
   button {
     color: white;

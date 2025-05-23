@@ -7,13 +7,14 @@ import { Customer, TableCustomer } from '../models/customer';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { DataType } from '../models/constants';
+import { API_URL, CustomerSearchDirection, CustomerSearchType, DataType } from '../models/constants';
 import { debounceTime } from 'rxjs/operators';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { InputComponent } from './input.component';
 import { CustomerDetailComponent } from './customer-detail.component';
 import { AlertModalComponent } from './alert-modal.component';
 import { ViewChild } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 
 @Component({
   selector: 'app-customer-list',
@@ -43,6 +44,7 @@ import { ViewChild } from '@angular/core';
     [icons]="['delete','info']"
       [colonne]="colonne"
       [righe]="righe"
+      [pageSize]="pagSize"
       (info)="infoCustomer($event)"
       (delete)="delete($event)"
     ></app-table></div>
@@ -59,6 +61,7 @@ import { ViewChild } from '@angular/core';
       [customer]="customer()"
       (close)="showCustomerDetail = false ; opacity = 1"
       (update)="updateCustomer($event)"
+      (delete)="delete($event)"
     />
     } @if(showAlertModal){
     <app-alert-modal
@@ -126,8 +129,9 @@ export class CustomerListComponent implements OnInit {
   deletingCustomerId: number|null = null;
   opacity= 1;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
+  pagSize = 5;
 
-  constructor(private dataService: DataService) {    
+  constructor(private dataService: DataService, private http: HttpClient) {    
     effect(() => {
       const c = this.dataService.customer();
       if (this.deletingCustomerId != null && c.id === this.deletingCustomerId) {
@@ -138,6 +142,8 @@ export class CustomerListComponent implements OnInit {
     });
   }
   ngOnInit(): void {
+   this.dataService.getAllDataPaginated(DataType.CUSTOMER, 1, this.pagSize, CustomerSearchType.NAME, CustomerSearchDirection.ASC);
+
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.emailInput.setValue('', { emitEvent: false });
@@ -187,7 +193,7 @@ export class CustomerListComponent implements OnInit {
     const list =
       searchValue && searchValue.length > 0
         ? this.dataService.filtredCustomers()
-        : this.dataService.customers();
+        : this.customers();
     if (!list || !Array.isArray(list) || list.length === 0) return [];
     return list.map((customer) => ({
       id: customer.id,
@@ -251,6 +257,7 @@ export class CustomerListComponent implements OnInit {
       );
     }
     this.showAlertModal = false;
+    this.showCustomerDetail = false;
     this.opacity = 1;
   }
 }

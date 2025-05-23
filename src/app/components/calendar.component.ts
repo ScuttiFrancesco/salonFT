@@ -20,7 +20,14 @@ interface AppointmentVisualProperties {
 @Component({
   selector: 'app-calendar',
   standalone: true,
-  imports: [CommonModule, MatIconModule, MatButtonModule, DatePipe, AppointmentDetailComponent, AlertModalComponent],
+  imports: [
+    CommonModule,
+    MatIconModule,
+    MatButtonModule,
+    DatePipe,
+    AppointmentDetailComponent,
+    AlertModalComponent,
+  ],
   template: `
     <div class="calendar-container">
       <!-- Controlli di navigazione -->
@@ -45,49 +52,71 @@ interface AppointmentVisualProperties {
             <tr>
               <th class="time-column-header"></th>
               @for (day of weekDays; track day) {
-                <th class="day-header" [class.today]="isToday(day.date)">
-                  <div class="day-name">{{ day.name }}</div>
-                  <div class="day-date">{{ day.date | date:'d MMM' }}</div>
-                </th>
+              <th class="day-header" [class.today]="isToday(day.date)">
+                <div class="day-name">{{ day.name }}</div>
+                <div class="day-date">{{ day.date | date : 'd MMM' }}</div>
+              </th>
               }
             </tr>
           </thead>
           <tbody>
             @for (hour of hours; track hour) {
-              <tr>
-                <td class="hour-cell">{{ hour }}:00</td>
-                @for (day of weekDays; track day) {
-                  <td class="time-slot" [class.today]="isToday(day.date)" (click)="createAppointment(day.date, hour)">
-                    <div class="time-slot-container">
-                      @let appointmentsInCurrentSlot = getAppointmentsForSlot(day.date, hour);
-                      @for (appointment of appointmentsInCurrentSlot; let i = $index; track appointment.id) {
-                        @let visualProps = getCardVisualProperties(appointment, i, appointmentsInCurrentSlot);
-                        <div 
-                          class="appointment-card" 
-                          [ngStyle]="{ top: visualProps.top, left: visualProps.left, width: visualProps.width, height: visualProps.heightPx, zIndex: visualProps.zIndex }"
-                          [class.is-hovered]="appointment.id === hoveredAppointmentId"
-                          (click)="openAppointment(appointment, $event)"
-                          (mouseenter)="onAppointmentHover(appointment.id)"
-                          (mouseleave)="onAppointmentLeave()"
-                        >
-                          <div class="appointment-header">
-                            <span class="appointment-time">{{ appointment.date | date:'HH:mm' }}</span>
-                            @if (appointment.id === hoveredAppointmentId || visualProps.height >= 40) {
-                              <span class="appointment-customer">{{ getShortCustomerName(appointment) }}</span>
-                            }
-                            <span class="appointment-duration">{{ appointment.duration }} min</span>
-                          </div>
-                          @if (appointment.id === hoveredAppointmentId || visualProps.height >= 58) {
-                            @if (appointment.services?.length) {
-                              <div class="appointment-services">{{ appointment.services?.join(', ') }}</div>
-                            }
-                          }
-                        </div>
+            <tr>
+              <td class="hour-cell">{{ hour }}:00</td>
+              @for (day of weekDays; track day) {
+              <td
+                class="time-slot"
+                [class.today]="isToday(day.date)"
+                (click)="createAppointment(day.date, hour)"
+              >
+                <div class="time-slot-container">
+                  @let appointmentsInCurrentSlot =
+                  getAppointmentsForSlot(day.date, hour); @for (appointment of
+                  appointmentsInCurrentSlot; let i = $index; track
+                  appointment.id) { @let visualProps =
+                  getCardVisualProperties(appointment, i,
+                  appointmentsInCurrentSlot);
+                  <div
+                    class="appointment-card"
+                    [ngStyle]="{
+                      top: visualProps.top,
+                      left: visualProps.left,
+                      width: visualProps.width,
+                      height: visualProps.heightPx,
+                      zIndex: visualProps.zIndex
+                    }"
+                    [class.is-hovered]="appointment.id === hoveredAppointmentId"
+                    (click)="openAppointment(appointment, $event)"
+                    (mouseenter)="onAppointmentHover(appointment.id)"
+                    (mouseleave)="onAppointmentLeave()"
+                  >
+                    <div class="appointment-header">
+                      <span class="appointment-time">{{
+                        appointment.date | date : 'HH:mm'
+                      }}</span>
+                      @if (appointment.id === hoveredAppointmentId ||
+                      visualProps.height >= 40) {
+                      <span class="appointment-customer">{{
+                        getShortCustomerName(appointment)
+                      }}</span>
                       }
+                      <span class="appointment-duration"
+                        >{{ appointment.duration }} min</span
+                      >
                     </div>
-                  </td>
-                }
-              </tr>
+                    @if (appointment.id === hoveredAppointmentId ||
+                    visualProps.height >= 58) { @if
+                    (appointment.services?.length) {
+                    <div class="appointment-services">
+                      {{ appointment.services?.join(', ') }}
+                    </div>
+                    } }
+                  </div>
+                  }
+                </div>
+              </td>
+              }
+            </tr>
             }
           </tbody>
         </table>
@@ -95,22 +124,22 @@ interface AppointmentVisualProperties {
     </div>
 
     @if(selectedAppointment) {
-      <app-appointment-detail 
-        [appointment]="selectedAppointment"
-        (close)="closeAppointmentDetail()"
-        (update)="updateAppointment($event)"
-        (delete)="delete($event)"
-      />
+    <app-appointment-detail
+      [appointment]="selectedAppointment"
+      (close)="closeAppointmentDetail()"
+      (update)="updateAppointment($event)"
+      (delete)="delete($event)"
+    />
     }
-    
+
     <!-- Aggiungi Alert Modal per conferma eliminazione -->
     @if(showAlertModal) {
-      <app-alert-modal
-        [title]="'Elimina Appuntamento'"
-        [confirmation]="true"
-        (confirm)="confirmDeleting($event)"
-        [message]="message"
-      />
+    <app-alert-modal
+      [title]="'Elimina Appuntamento'"
+      [confirmation]="true"
+      (confirm)="confirmDeleting($event)"
+      [message]="message"
+    />
     }
   `,
   styles: `
@@ -316,11 +345,11 @@ interface AppointmentVisualProperties {
         padding: 4px 2px;
       }
     }
-  `
+  `,
 })
 export class CalendarComponent implements OnInit {
   weekStart: Date = new Date();
-  weekDays: { date: Date, name: string }[] = [];
+  weekDays: { date: Date; name: string }[] = [];
   hours: number[] = Array.from({ length: 13 }, (_, i) => i + 8); // 8:00 - 20:00
   appointments: TableAppointment[] = [];
   selectedAppointment: TableAppointment | null = null;
@@ -335,24 +364,31 @@ export class CalendarComponent implements OnInit {
     // Inizializza weekStart alla domenica della settimana corrente
     this.weekStart = this.getWeekStart(new Date());
     this.generateWeekDays();
-    
+
     // Aggiungi un effect che reagisce ai cambiamenti negli appuntamenti
     effect(() => {
       this.appointments = this.dataService.appointments();
-      console.log("Appointments updated in calendar:", this.appointments);
+      console.log('Appointments updated in calendar:', this.appointments);
     });
-    
+
     // Effect per l'eliminazione di appuntamenti
     effect(() => {
       const selectedApp = this.dataService.appointment();
-      if (this.deletingAppointmentId != null && selectedApp && selectedApp.id === this.deletingAppointmentId) {
+      if (
+        this.deletingAppointmentId != null &&
+        selectedApp &&
+        selectedApp.id === this.deletingAppointmentId
+      ) {
         // Prepara il messaggio per l'alert
-        const customerName = selectedApp.customer 
-          ? `${selectedApp.customer.name} ${selectedApp.customer.surname}` 
-          : "senza cliente";
+        const customerName = selectedApp.customer
+          ? `${selectedApp.customer.name} ${selectedApp.customer.surname}`
+          : 'senza cliente';
         const appDate = new Date(selectedApp.date);
-        const formattedDate = this.datePipe.transform(appDate, 'dd/MM/yyyy HH:mm');
-        
+        const formattedDate = this.datePipe.transform(
+          appDate,
+          'dd/MM/yyyy HH:mm'
+        );
+
         this.message = `Sei sicuro di voler eliminare l'appuntamento di ${customerName} del ${formattedDate}?`;
         this.showAlertModal = true;
         this.deletingAppointmentId = null;
@@ -375,7 +411,7 @@ export class CalendarComponent implements OnInit {
     const newDate = new Date(date);
     const day = newDate.getDay();
     // Imposta al lunedì della settimana corrente (0 = Domenica in JavaScript)
-    const diff = newDate.getDate() - day + (day === 0 ? -6 : 1); 
+    const diff = newDate.getDate() - day + (day === 0 ? -6 : 1);
     newDate.setDate(diff);
     newDate.setHours(0, 0, 0, 0);
     return newDate;
@@ -383,14 +419,22 @@ export class CalendarComponent implements OnInit {
 
   generateWeekDays() {
     this.weekDays = [];
-    const dayNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
-    
+    const dayNames = [
+      'Lunedì',
+      'Martedì',
+      'Mercoledì',
+      'Giovedì',
+      'Venerdì',
+      'Sabato',
+      'Domenica',
+    ];
+
     for (let i = 0; i < 7; i++) {
       const date = new Date(this.weekStart);
       date.setDate(this.weekStart.getDate() + i);
       this.weekDays.push({
         date: date,
-        name: dayNames[i]
+        name: dayNames[i],
       });
     }
   }
@@ -419,51 +463,65 @@ export class CalendarComponent implements OnInit {
 
   isToday(date: Date): boolean {
     const today = new Date();
-    return date.getDate() === today.getDate() && 
-           date.getMonth() === today.getMonth() && 
-           date.getFullYear() === today.getFullYear();
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    );
   }
 
   formatWeekRange(): string {
     const endDate = new Date(this.weekStart);
     endDate.setDate(endDate.getDate() + 6);
-    
+
     if (this.weekStart.getMonth() === endDate.getMonth()) {
-      return `${this.datePipe.transform(this.weekStart, 'd')} - ${this.datePipe.transform(endDate, 'd MMMM yyyy')}`;
+      return `${this.datePipe.transform(
+        this.weekStart,
+        'd'
+      )} - ${this.datePipe.transform(endDate, 'd MMMM yyyy')}`;
     } else {
-      return `${this.datePipe.transform(this.weekStart, 'd MMM')} - ${this.datePipe.transform(endDate, 'd MMM yyyy')}`;
+      return `${this.datePipe.transform(
+        this.weekStart,
+        'd MMM'
+      )} - ${this.datePipe.transform(endDate, 'd MMM yyyy')}`;
     }
   }
 
   getAppointmentsForSlot(day: Date, hour: number): TableAppointment[] {
-    return this.appointments.filter(appointment => {
+    return this.appointments.filter((appointment) => {
       const appointmentDate = new Date(appointment.date);
-      return appointmentDate.getDate() === day.getDate() && 
-             appointmentDate.getMonth() === day.getMonth() && 
-             appointmentDate.getFullYear() === day.getFullYear() &&
-             appointmentDate.getHours() === hour;
+      return (
+        appointmentDate.getDate() === day.getDate() &&
+        appointmentDate.getMonth() === day.getMonth() &&
+        appointmentDate.getFullYear() === day.getFullYear() &&
+        appointmentDate.getHours() === hour
+      );
     });
   }
 
-  getCardVisualProperties(appointment: TableAppointment, indexInSlot: number, appointmentsInSlot: TableAppointment[]): AppointmentVisualProperties {
+  getCardVisualProperties(
+    appointment: TableAppointment,
+    indexInSlot: number,
+    appointmentsInSlot: TableAppointment[]
+  ): AppointmentVisualProperties {
     const appDate = new Date(appointment.date);
     const startMinute = appDate.getMinutes();
     const durationMinutes = parseInt(appointment.duration, 10) || 0; // Ensure duration is a number
 
-    const slotPixelHeight = 60; 
-    
+    const slotPixelHeight = 60;
+
     const topOffset = (startMinute / 60) * slotPixelHeight;
 
     let visualHeight = (durationMinutes / 60) * slotPixelHeight;
 
     if (this.hoveredAppointmentId !== appointment.id) {
-      visualHeight = Math.max(visualHeight, 22); 
+      visualHeight = Math.max(visualHeight, 22);
     } else {
-      visualHeight = Math.max(visualHeight, 58); 
+      visualHeight = Math.max(visualHeight, 58);
     }
-    
+
     const totalInSlot = appointmentsInSlot.length;
-    const widthPercentage = totalInSlot > 0 ? (100 / totalInSlot) : 100;
+    const widthPercentage = totalInSlot > 0 ? 100 / totalInSlot : 100;
     const leftPercentage = indexInSlot * widthPercentage;
 
     return {
@@ -472,7 +530,8 @@ export class CalendarComponent implements OnInit {
       width: `${widthPercentage}%`,
       height: visualHeight, // Return raw number
       heightPx: `${visualHeight}px`, // Return pixel string for style
-      zIndex: (this.hoveredAppointmentId === appointment.id) ? 20 : (indexInSlot + 2)
+      zIndex:
+        this.hoveredAppointmentId === appointment.id ? 20 : indexInSlot + 2,
     };
   }
 
@@ -487,14 +546,14 @@ export class CalendarComponent implements OnInit {
   createAppointment(date: Date, hour: number) {
     const appointmentTime = new Date(date);
     appointmentTime.setHours(hour, 0, 0, 0);
-    
+
     this.selectedAppointment = {
       id: 0,
       date: appointmentTime.toISOString(),
       duration: '60',
       services: [],
       notes: '',
-      customer: undefined
+      customer: undefined,
     };
   }
 
@@ -509,30 +568,31 @@ export class CalendarComponent implements OnInit {
 
   updateAppointment(appointment: any) {
     if (appointment.id === 0) {
-      this.dataService.insertData(DataType[DataType.APPOINTMENT].toLowerCase(), appointment);
+      this.dataService.insertData(
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        appointment
+      );
     } else {
       this.dataService.updateData(
-        DataType[DataType.APPOINTMENT].toLowerCase(), 
-        appointment.id, 
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        appointment.id,
         appointment
       );
     }
     this.closeAppointmentDetail();
-   
   }
 
   // Aggiungi questo metodo per ottenere il formato abbreviato del nome cliente
   getShortCustomerName(appointment: TableAppointment): string {
     if (!appointment.customer) return '';
-    
+
     const surname = appointment.customer.surname || '';
     const name = appointment.customer.name || '';
     const initial = name.length > 0 ? name[0] : '';
-    
+
     return `${surname} ${initial}.`;
   }
 
-  
   delete(idAppointment: number) {
     this.deletingAppointmentId = idAppointment;
     this.dataService.getDataById(
@@ -541,7 +601,6 @@ export class CalendarComponent implements OnInit {
     );
   }
 
- 
   confirmDeleting(event: boolean) {
     if (event) {
       this.dataService.deleteData(
@@ -550,6 +609,6 @@ export class CalendarComponent implements OnInit {
       );
     }
     this.showAlertModal = false;
-   this.closeAppointmentDetail();
+    this.closeAppointmentDetail();
   }
 }

@@ -145,17 +145,17 @@ export class TableComponent {
   lastSortedColumn: string | null = null; // Traccia l'ultima colonna ordinata
 
   pageSizes = [8, 16, 32];
-  pageSize = 8;
+  pageSize = input<number>(8);
   pageIndex = 0;
 
   get totalPages(): number {
-    return Math.ceil((this.orderedRighe.length > 0 ? this.orderedRighe.length : this.righe().length) / this.pageSize) || 1;
+    return Math.ceil((this.orderedRighe.length > 0 ? this.orderedRighe.length : this.righe().length) / this.pageSize()) || 1;
   }
 
   pagedRows() {
     const dataSource = this.orderedRighe.length > 0 ? this.orderedRighe : this.righe();
-    const start = this.pageIndex * this.pageSize;
-    return dataSource.slice(start, start + this.pageSize);
+    const start = this.pageIndex * this.pageSize();
+    return dataSource.slice(start, start + this.pageSize());
   }
 
   getCellValues(row: any): any[] {

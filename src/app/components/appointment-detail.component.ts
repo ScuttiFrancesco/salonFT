@@ -189,7 +189,7 @@ import { FormsModule } from '@angular/forms';
             @if(appointment().id > 0){ Salva Modifiche}@else { Inserisci
             Appuntamento }
           </button>
-          @if(appointment().id !== 0){
+          @if(appointment().id > 0){
              <button class="delete-button" type="button" (click)="delete.emit(appointment().id)">
             Elimina
           </button>
@@ -462,6 +462,25 @@ export class AppointmentDetailComponent {
       );
     });
 
+    // Aggiungi un listener per rilevare modifiche manuali al campo di ricerca cliente
+    this.customerSearch.valueChanges.subscribe(value => {
+      // Ottieni il cliente selezionato corrente (se esiste)
+      const selectedCustomerId = this.customerId.value;
+      if (!selectedCustomerId) return;
+      
+      // Trova il cliente corrispondente
+      const selectedCustomer = this.availableCustomers.find(c => c.id.toString() === selectedCustomerId);
+      if (!selectedCustomer) return;
+      
+      // Verifica se il valore corrente corrisponde al nome completo del cliente selezionato
+      const fullName = `${selectedCustomer.name} ${selectedCustomer.surname}`.trim();
+      
+      // Se il valore è stato modificato rispetto al nome completo, invalida la selezione
+      if (value !== fullName) {
+        this.customerId.setValue('');
+        this.selectedCustomerPhone = '';
+      }
+    });
   }
 
   private _filterCustomers(value: string): Customer[] {

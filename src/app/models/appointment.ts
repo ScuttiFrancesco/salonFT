@@ -8,12 +8,14 @@ export interface Appointment {
   duration: number;
   services: string[];
   notes: string;
+  customerNameAndPhone?: string;
 }
 
 export interface TableAppointment {
   id: number;
   customer?: Customer;
-  customerName?: string;
+   customerNameAndPhone?: string;
+   customerId?: number;
   date: string;
   duration: string;
   notes?: string;
