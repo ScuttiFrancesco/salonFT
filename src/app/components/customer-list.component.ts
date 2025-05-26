@@ -20,6 +20,7 @@ import { CustomerDetailComponent } from './customer-detail.component';
 import { AlertModalComponent } from './alert-modal.component';
 import { ViewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
+import e from 'express';
 
 @Component({
   selector: 'app-customer-list',
@@ -167,62 +168,51 @@ export class CustomerListComponent implements OnInit {
     });
   }
   ngOnInit(): void {
-    this.dataService.getAllDataPaginated('retrieveAll/paginated',
-      DataType.CUSTOMER,
-      1,
-      this.pagSize,
-      CustomerSearchType.ID,
-      CustomerSearchDirection.ASC
-    );
+    this.initialData();
 
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.emailInput.setValue('', { emitEvent: false });
         this.phoneInput.setValue('', { emitEvent: false });
-        /*  if (this.tableComponent) {
-          this.tableComponent.pageIndex = 0;
-        } */
       }
-       this.dataService.getAllDataPaginated('searchByName=' + value,
-      DataType.CUSTOMER,
-      1,
-      this.pagSize,
-      CustomerSearchType.ID,
-      CustomerSearchDirection.ASC
-    );
+      this.initialData('searchByName=' + value);
     });
     this.emailInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.nameInput.setValue('', { emitEvent: false });
         this.phoneInput.setValue('', { emitEvent: false });
-        /* if (this.tableComponent) {
-          this.tableComponent.pageIndex = 0;
-        } */
       }
-      this.dataService.getAllDataPaginated('searchByEmail=' + value,
-      DataType.CUSTOMER,
-      1,
-      this.pagSize,
-      CustomerSearchType.ID,
-      CustomerSearchDirection.ASC
-    );
+      this.initialData('searchByEmail=' + value);
     });
     this.phoneInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.nameInput.setValue('', { emitEvent: false });
         this.emailInput.setValue('', { emitEvent: false });
-        /*  if (this.tableComponent) {
-          this.tableComponent.pageIndex = 0;
-        } */
       }
-      this.dataService.getAllDataPaginated('searchByPhoneNumber=' + value,
-      DataType.CUSTOMER,
-      1,
-      this.pagSize,
-      CustomerSearchType.ID,
-      CustomerSearchDirection.ASC
-    );
+      this.initialData('searchByPhoneNumber=' + value);
     });
+  }
+
+  initialData(value: string = '') {
+    if (value !== '') {
+      this.dataService.getAllDataPaginated(
+        value,
+        DataType.CUSTOMER,
+        1,
+        this.pagSize,
+        CustomerSearchType.ID,
+        CustomerSearchDirection.ASC
+      );
+    } else {
+      this.dataService.getAllDataPaginated(
+        'retrieveAll/paginated',
+        DataType.CUSTOMER,
+        1,
+        this.pagSize,
+        CustomerSearchType.ID,
+        CustomerSearchDirection.ASC
+      );
+    }
   }
 
   get righe(): TableCustomer[] {
@@ -230,8 +220,13 @@ export class CustomerListComponent implements OnInit {
       this.nameInput.value?.trim() ||
       this.emailInput.value?.trim() ||
       this.phoneInput.value?.trim();
-    
-    if (!this.customers() || !Array.isArray(this.customers()) || this.customers().length === 0) return [];
+
+    if (
+      !this.customers() ||
+      !Array.isArray(this.customers()) ||
+      this.customers().length === 0
+    )
+      return [];
     return this.customers().map((customer) => ({
       id: customer.id,
       name: customer.name,
@@ -272,9 +267,6 @@ export class CustomerListComponent implements OnInit {
     this.showCustomerDetail = true;
     this.dataService.customer.set({} as Customer);
     this.opacity = 0.5;
-    /*  if (this.tableComponent) {
-          this.tableComponent.pageIndex = 0;
-        } */
   }
 
   delete(idCustomer: number) {
@@ -299,7 +291,17 @@ export class CustomerListComponent implements OnInit {
   }
 
   nextPage() {
-    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+    let endpoint = 'retrieveAll/paginated';
+    if (this.nameInput.value?.trim()) {
+      endpoint = 'searchByName=' + this.nameInput.value?.trim();
+    } else if (this.emailInput.value?.trim()) {
+      endpoint = 'searchByEmail=' + this.emailInput.value?.trim();
+    } else if (this.phoneInput.value?.trim()) {
+      endpoint = 'searchByPhoneNumber=' + this.phoneInput.value?.trim();
+    }
+
+    this.dataService.getAllDataPaginated(
+      endpoint,
       DataType.CUSTOMER,
       this.customerPagination().currentPage + 1,
       this.pagSize,
@@ -309,7 +311,16 @@ export class CustomerListComponent implements OnInit {
   }
 
   prevPage() {
-    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+   let endpoint = 'retrieveAll/paginated';
+    if (this.nameInput.value?.trim()) {
+      endpoint = 'searchByName=' + this.nameInput.value?.trim();
+    } else if (this.emailInput.value?.trim()) {
+      endpoint = 'searchByEmail=' + this.emailInput.value?.trim();
+    } else if (this.phoneInput.value?.trim()) {
+      endpoint = 'searchByPhoneNumber=' + this.phoneInput.value?.trim();
+    }
+    this.dataService.getAllDataPaginated(
+      endpoint,
       DataType.CUSTOMER,
       this.customerPagination().currentPage - 1,
       this.pagSize,
@@ -331,7 +342,8 @@ export class CustomerListComponent implements OnInit {
         colIndex = 2;
         break;
     }
-    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+    this.dataService.getAllDataPaginated(
+      'retrieveAll/paginated',
       DataType.CUSTOMER,
       1,
       this.pagSize,
@@ -343,8 +355,13 @@ export class CustomerListComponent implements OnInit {
   }
 
   pageSize(size: number) {
+    this.emailInput.setValue('', { emitEvent: false });
+    this.phoneInput.setValue('', { emitEvent: false });
+    this.nameInput.setValue('', { emitEvent: false });
+
     this.pagSize = size;
-    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+    this.dataService.getAllDataPaginated(
+      'retrieveAll/paginated',
       DataType.CUSTOMER,
       1,
       this.pagSize,
