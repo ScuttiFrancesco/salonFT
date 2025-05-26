@@ -10,50 +10,75 @@ import { FormsModule } from '@angular/forms';
   imports: [MatButtonModule, MatIconModule, FormsModule],
   template: `
     <div class="table-container">
-      <table>
-        <thead>
-          <tr>
-            @for(col of colonne(); track $index){
-            <th>
-              {{ col }} @if(col === 'Id' || col === 'Nome' || col === 'Cognome' || col === 'Giorno' || col === 'Ora'){<mat-icon (click)="orderBy(col)">import_export</mat-icon>}
-            </th>
-            }
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          @for(riga of pagedRows(); track $index){
-          <tr>
-            @for(cella of getCellValues(riga); track $index){
-            <td>
-              {{ cella }}
-            </td>
-            }
-            <td>
-              @for(icon of icons(); track $index){
-              <button (click)="$any(this)[icon].emit(riga.id)">
-                <mat-icon [class]="icon">{{ icon }}</mat-icon>
-              </button>
-              }
-            </td>
-          </tr>
-          }@empty { Nessun dato disponibile }
-        </tbody>
-      </table>
-      <div class="pagination">
-        @if(pageIndex > 0){
-       <span> <mat-icon (click)="prevPage()">chevron_left</mat-icon></span>
-       <span> <mat-icon (click)="pageIndex = 0">first_page</mat-icon></span> <span> <mat-icon >more_horiz</mat-icon></span>}<span class="pag">
-          {{ pageIndex + 1 }}
-        </span>
-        @if(pageIndex < totalPages - 1){<span> <mat-icon >more_horiz</mat-icon></span><span><mat-icon (click)="pageIndex = totalPages - 1">last_page</mat-icon></span>
-        
-         <span> <mat-icon (click)="nextPage()">chevron_right</mat-icon></span>
-          }
-      </div>
-    </div>
+   <table>
+     <thead>
+       <tr>
+         @for(col of colonne(); track $index){
+         <th>
+           {{ col }} @if(col === 'Id' || col === 'Nome' || col === 'Cognome'
+           || col === 'Giorno' || col === 'Ora'){<mat-icon (click)="orderBy.emit(col)">import_export</mat-icon>}
+         </th>
+         }
+         <th></th>
+       </tr>
+     </thead>
+     <tbody>
+       @for(riga of righe(); track $index){
+       <tr>
+         @for(cella of getCellValues(riga); track $index){
+         <td>
+           {{ cella }}
+         </td>
+         }
+         <td>
+           @for(icon of icons(); track $index){
+           <button (click)="$any(this)[icon].emit(riga.id)">
+             <mat-icon [class]="icon">{{ icon }}</mat-icon>
+           </button>
+           }
+         </td>
+       </tr>
+       }@empty { Nessun dato disponibile }
+     </tbody>
+   </table>
+   <div class="table-footer">
+     <div class="pagination">
+       @if(currentPage() > 1){
+       <span>
+         <mat-icon (click)="prevPage.emit()">chevron_left</mat-icon>
+       </span>
+       <!--  <span> <mat-icon (click)="pageIndex = 0">first_page</mat-icon></span> <span> <mat-icon >more_horiz</mat-icon></span> -->}<span
+         class="pag">
+         {{ currentPage() }}
+       </span>
+       @if(currentPage() < totalPages()){<!-- <span>
+         <mat-icon>more_horiz</mat-icon></span><span>
+           <mat-icon (click)="pageIndex = totalPages - 1">last_page</mat-icon>
+         </span> -->
+
+         <span>
+           <mat-icon (click)="nextPage.emit()">chevron_right</mat-icon>
+         </span>
+         }
+     </div>
+     <select name="totalElements" [value]="currentPageSize()" (change)="onPageSizeChange($event)">
+       @for(size of [5, 8, 10, 15, 20, 50]; track $index){
+       <option [value]="size">
+         {{ size }}
+       </option>
+       }
+     </select>
+   </div>
+ </div>
   `,
   styles: `
+
+  .table-footer{
+    display: grid;
+    grid-template-columns: 95% 5%;
+    align-items: center;
+    padding: 20px 50px 0 50px;
+  }
 
     table {
  width: 90%;
@@ -133,111 +158,27 @@ import { FormsModule } from '@angular/forms';
   `,
 })
 export class TableComponent {
-
   colonne = input.required<string[]>();
   righe = input.required<any>();
   info = output<any>();
   delete = output<any>();
   more_vert = output<any>();
   icons = input<string[]>(['delete', 'info', 'more_vert']);
-  orderedRighe : any[] = [];
-  isAscending = true; // Traccia la direzione dell'ordinamento
-  lastSortedColumn: string | null = null; // Traccia l'ultima colonna ordinata
-
-  pageSizes = [8, 16, 32];
-  pageSize = input<number>(8);
-  pageIndex = 0;
-
-  get totalPages(): number {
-    return Math.ceil((this.orderedRighe.length > 0 ? this.orderedRighe.length : this.righe().length) / this.pageSize()) || 1;
-  }
-
-  pagedRows() {
-    const dataSource = this.orderedRighe.length > 0 ? this.orderedRighe : this.righe();
-    const start = this.pageIndex * this.pageSize();
-    return dataSource.slice(start, start + this.pageSize());
-  }
+  nextPage = output<void>();
+  prevPage = output<void>();
+  currentPage = input<number>(1);
+  totalPages = input<number>(1);
+  currentPageSize = input<number>(10); // Aggiungi questo input per il valore corrente
+  pageSize = output<number>();
+  orderBy = output<string>();
 
   getCellValues(row: any): any[] {
     return Array.isArray(row) ? row : Object.values(row);
   }
 
-  onPageSizeChange() {
-    this.pageIndex = 0;
-  }
-
-  prevPage() {
-    if (this.pageIndex > 0) this.pageIndex--;
-  }
-
-  nextPage() {
-    if (this.pageIndex < this.totalPages - 1) this.pageIndex++;
-  }
-  
-  orderBy(col: string) {
-    console.log('ordinamento per colonna:', col);
-
-    // Inverti la direzione se la colonna è la stessa
-    if (this.lastSortedColumn === col) {
-      this.isAscending = !this.isAscending;
-    } else {
-      this.lastSortedColumn = col;
-      this.isAscending = true; // Inizia con ordinamento ascendente per nuova colonna
-    }
-
-    // Lavora con una copia dei dati per evitare problemi
-    const dataToSort = [...this.righe()];
-    
-    // Ordinamento basato sulla direzione
-    this.orderedRighe = dataToSort.sort((a, b) => {
-      // Normalizza i valori per il confronto
-      const valA = this.getNormalizedValue(a, col);
-      const valB = this.getNormalizedValue(b, col);
-      
-      // Confronta in base alla direzione corrente
-      if (this.isAscending) {
-        return valA > valB ? 1 : valA < valB ? -1 : 0;
-      } else {
-        return valA < valB ? 1 : valA > valB ? -1 : 0;
-      }
-    });
-    
-    // Torna alla prima pagina dopo l'ordinamento
-    this.pageIndex = 0;
-    
-    // Debug
-    console.log('Dati ordinati:', this.orderedRighe);
-  }
-  
-  // Metodo per ottenere il valore normalizzato per il confronto
-  private getNormalizedValue(item: any, column: string): any {
-    // Mappa i nomi delle colonne visualizzate ai nomi delle proprietà nei dati
-    const columnMap: Record<string, string> = {
-      'Id': 'id',
-      'Nome': 'name',
-      'Cognome': 'surname',
-      'Email': 'email',
-      'Telefono': 'phoneNumber',
-      'Cliente': 'customerName',
-      'Giorno': 'date',
-      'Ora': 'time',
-      'Durata': 'duration',
-      // Aggiungi altre mappature se necessario
-    };
-    
-    // Usa la mappatura se esiste, altrimenti usa il nome della colonna originale
-    const propertyName = columnMap[column] || column.toLowerCase();
-    const value = item[propertyName];
-    
-    // Gestisci tipi speciali per il confronto corretto
-    if (column === 'Giorno') {
-      // Per date in formato italiano DD/MM/YYYY, converti per un confronto corretto
-      const parts = value.split('/');
-      if (parts.length === 3) {
-        return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-      }
-    }
-    
-    return value;
+  onPageSizeChange(event: Event) {
+    const target = event.target as HTMLSelectElement;
+    const newSize = parseInt(target.value, 10);
+    this.pageSize.emit(newSize);
   }
 }

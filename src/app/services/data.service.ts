@@ -5,6 +5,7 @@ import { API_URL, DataType } from '../models/constants';
 import { log } from 'console';
 import { Appointment, TableAppointment } from '../models/appointment';
 import { map } from 'rxjs';
+import { PaginationInfo } from '../models/paginationInfo';
 
 @Injectable({
   providedIn: 'root',
@@ -12,6 +13,7 @@ import { map } from 'rxjs';
 export class DataService {
   customers = signal<Customer[]>([]);
   customer = signal<Customer>({} as Customer);
+  customerPagination = signal<PaginationInfo>({} as PaginationInfo);
   filtredCustomers = signal<Customer[]>([]);
   appointments = signal<TableAppointment[]>([]);
   appointment = signal<TableAppointment>({} as TableAppointment);
@@ -24,15 +26,16 @@ export class DataService {
     
   }
 
-  getAllDataPaginated(type : number, page: number, size: number, sortBy: number, sortDir: number) {
+  getAllDataPaginated(endpoint:string ,type : number, page: number, size: number, sortBy: number, sortDir: number) {
     this.http
       .get<any>(
-        `${API_URL}/${type}/retrieveAll/paginated?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
+        `${API_URL}/${type}/${endpoint}?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
       )
       .pipe(
         map((response) => {
           if (type === DataType.CUSTOMER) {
             this.customers.set(response.data);
+            this.customerPagination.set(response.pagination);
             console.log('Customers fetched successfully:', response);
           }
           if (type === DataType.APPOINTMENT) {

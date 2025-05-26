@@ -120,6 +120,7 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
         [righe]="righe"
         (info)="infoAppointment($event)"
         (delete)="delete($event)"
+        [currentPageSize]="currentPageSize"
       ></app-table>
     </div>
     } @placeholder {
@@ -201,6 +202,7 @@ export class AppointmentListComponent implements OnInit {
   message: string = '';
   deletingAppointmentId: number | null = null;
   opacity = 1;
+  currentPageSize = 10; // Aggiungi questa proprietà
   @ViewChild(TableComponent) tableComponent!: TableComponent;
   minDate: unknown;
   maxDate: unknown;
@@ -241,9 +243,9 @@ export class AppointmentListComponent implements OnInit {
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.range.reset();
-        if (this.tableComponent) {
+       /*  if (this.tableComponent) {
           this.tableComponent.pageIndex = 0;
-        }
+        } */
 
         this.dataService.getSearchedData(
           DataType[DataType.APPOINTMENT].toLowerCase() +
@@ -292,9 +294,9 @@ export class AppointmentListComponent implements OnInit {
     this.showAppointmentDetail = true;
     this.dataService.appointment.set({} as TableAppointment);
     this.opacity = 0.5;
-    if (this.tableComponent) {
+   /*  if (this.tableComponent) {
       this.tableComponent.pageIndex = 0;
-    }
+    } */
   }
 
   delete(idAppontment: number) {
@@ -327,9 +329,9 @@ export class AppointmentListComponent implements OnInit {
   resetDateRange() {
     this.range.reset();
     this.dataService.filtredAppointments.set([]);
-    if (this.tableComponent) {
+    /* if (this.tableComponent) {
       this.tableComponent.pageIndex = 0;
-    }
+    } */
     if (this.nameInput.value) {
       this.dataService.getSearchedData(
         DataType[DataType.APPOINTMENT].toLowerCase() + `/retrieveAll/customer`,
@@ -367,14 +369,14 @@ export class AppointmentListComponent implements OnInit {
         );
       }
 
-      if (this.tableComponent) {
+     /*  if (this.tableComponent) {
         this.tableComponent.pageIndex = 0;
-      }
+      } */
     } else if (!startDate && !endDate) {
       this.dataService.filtredAppointments.set([]);
-      if (this.tableComponent) {
+      /* if (this.tableComponent) {
         this.tableComponent.pageIndex = 0;
-      }
+      } */
     }
   }
 

@@ -7,7 +7,12 @@ import { Customer, TableCustomer } from '../models/customer';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
-import { API_URL, CustomerSearchDirection, CustomerSearchType, DataType } from '../models/constants';
+import {
+  API_URL,
+  CustomerSearchDirection,
+  CustomerSearchType,
+  DataType,
+} from '../models/constants';
 import { debounceTime } from 'rxjs/operators';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { InputComponent } from './input.component';
@@ -32,22 +37,41 @@ import { HttpClient } from '@angular/common/http';
   template: `
     @defer (when righe.length > 0;) {
     <div [style.opacity]="opacity">
-    <div class="title">Lista Clienti</div>
+      <div class="title">Lista Clienti</div>
 
-    <div class="search-container">
-      <app-input [placeholder]="'Cerca per nominativo'" [type]="'text'" [formControl]="nameInput"/>
-      <app-input [placeholder]="'Cerca per email'" [type]="'email'" [formControl]="emailInput"/>
-      <app-input [placeholder]="'Cerca per telefono'" [type]="'text'" [formControl]="phoneInput"/>
-      <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>
+      <div class="search-container">
+        <app-input
+          [placeholder]="'Cerca per nominativo'"
+          [type]="'text'"
+          [formControl]="nameInput"
+        />
+        <app-input
+          [placeholder]="'Cerca per email'"
+          [type]="'email'"
+          [formControl]="emailInput"
+        />
+        <app-input
+          [placeholder]="'Cerca per telefono'"
+          [type]="'text'"
+          [formControl]="phoneInput"
+        />
+        <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>
+      </div>
+      <app-table
+        [icons]="['delete', 'info']"
+        [colonne]="colonne"
+        [righe]="righe"
+        (pageSize)="pageSize($event)"
+        [currentPage]="customerPagination().currentPage"
+        [totalPages]="customerPagination().totalPages"
+        [currentPageSize]="pagSize"
+        (nextPage)="nextPage()"
+        (prevPage)="prevPage()"
+        (orderBy)="orderBy($event)"
+        (info)="infoCustomer($event)"
+        (delete)="delete($event)"
+      ></app-table>
     </div>
-    <app-table
-    [icons]="['delete','info']"
-      [colonne]="colonne"
-      [righe]="righe"
-      [pageSize]="pagSize"
-      (info)="infoCustomer($event)"
-      (delete)="delete($event)"
-    ></app-table></div>
     } @placeholder {
     <div class="loader-container">
       <mat-progress-spinner
@@ -59,7 +83,7 @@ import { HttpClient } from '@angular/common/http';
     } @if (showCustomerDetail) {
     <app-customer-detail
       [customer]="customer()"
-      (close)="showCustomerDetail = false ; opacity = 1"
+      (close)="showCustomerDetail = false; opacity = 1"
       (update)="updateCustomer($event)"
       (delete)="delete($event)"
     />
@@ -119,6 +143,7 @@ error-message {
 export class CustomerListComponent implements OnInit {
   customers = computed(() => this.dataService.customers());
   customer = computed(() => this.dataService.customer());
+  customerPagination = computed(() => this.dataService.customerPagination());
   colonne: string[] = ['Id', 'Nome', 'Cognome', 'Email', 'Telefono'];
   nameInput = new FormControl('');
   emailInput = new FormControl('');
@@ -126,12 +151,12 @@ export class CustomerListComponent implements OnInit {
   showCustomerDetail = false;
   showAlertModal = false;
   message: string = '';
-  deletingCustomerId: number|null = null;
-  opacity= 1;
+  deletingCustomerId: number | null = null;
+  opacity = 1;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
   pagSize = 5;
 
-  constructor(private dataService: DataService, private http: HttpClient) {    
+  constructor(private dataService: DataService, private http: HttpClient) {
     effect(() => {
       const c = this.dataService.customer();
       if (this.deletingCustomerId != null && c.id === this.deletingCustomerId) {
@@ -142,46 +167,61 @@ export class CustomerListComponent implements OnInit {
     });
   }
   ngOnInit(): void {
-   this.dataService.getAllDataPaginated(DataType.CUSTOMER, 1, this.pagSize, CustomerSearchType.NAME, CustomerSearchDirection.ASC);
+    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+      DataType.CUSTOMER,
+      1,
+      this.pagSize,
+      CustomerSearchType.ID,
+      CustomerSearchDirection.ASC
+    );
 
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.emailInput.setValue('', { emitEvent: false });
-        this.phoneInput.setValue('', { emitEvent: false });        
-        if (this.tableComponent) {
+        this.phoneInput.setValue('', { emitEvent: false });
+        /*  if (this.tableComponent) {
           this.tableComponent.pageIndex = 0;
-        }
+        } */
       }
-      this.dataService.getSearchedData(
-        DataType[DataType.CUSTOMER].toLowerCase() + '/searchName',
-        value ?? ''
-      );
+       this.dataService.getAllDataPaginated('searchByName=' + value,
+      DataType.CUSTOMER,
+      1,
+      this.pagSize,
+      CustomerSearchType.ID,
+      CustomerSearchDirection.ASC
+    );
     });
     this.emailInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.nameInput.setValue('', { emitEvent: false });
         this.phoneInput.setValue('', { emitEvent: false });
-        if (this.tableComponent) {
+        /* if (this.tableComponent) {
           this.tableComponent.pageIndex = 0;
-        }
+        } */
       }
-      this.dataService.getSearchedData(
-        DataType[DataType.CUSTOMER].toLowerCase() + '/searchEmail',
-        value ?? ''
-      );
+      this.dataService.getAllDataPaginated('searchByEmail=' + value,
+      DataType.CUSTOMER,
+      1,
+      this.pagSize,
+      CustomerSearchType.ID,
+      CustomerSearchDirection.ASC
+    );
     });
     this.phoneInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
       if (value) {
         this.nameInput.setValue('', { emitEvent: false });
         this.emailInput.setValue('', { emitEvent: false });
-        if (this.tableComponent) {
+        /*  if (this.tableComponent) {
           this.tableComponent.pageIndex = 0;
-        }
+        } */
       }
-      this.dataService.getSearchedData(
-        DataType[DataType.CUSTOMER].toLowerCase() + '/searchPhoneNumber',
-        value ?? ''
-      );
+      this.dataService.getAllDataPaginated('searchByPhoneNumber=' + value,
+      DataType.CUSTOMER,
+      1,
+      this.pagSize,
+      CustomerSearchType.ID,
+      CustomerSearchDirection.ASC
+    );
     });
   }
 
@@ -190,12 +230,9 @@ export class CustomerListComponent implements OnInit {
       this.nameInput.value?.trim() ||
       this.emailInput.value?.trim() ||
       this.phoneInput.value?.trim();
-    const list =
-      searchValue && searchValue.length > 0
-        ? this.dataService.filtredCustomers()
-        : this.customers();
-    if (!list || !Array.isArray(list) || list.length === 0) return [];
-    return list.map((customer) => ({
+    
+    if (!this.customers() || !Array.isArray(this.customers()) || this.customers().length === 0) return [];
+    return this.customers().map((customer) => ({
       id: customer.id,
       name: customer.name,
       surname: customer.surname,
@@ -235,9 +272,9 @@ export class CustomerListComponent implements OnInit {
     this.showCustomerDetail = true;
     this.dataService.customer.set({} as Customer);
     this.opacity = 0.5;
-    if (this.tableComponent) {
+    /*  if (this.tableComponent) {
           this.tableComponent.pageIndex = 0;
-        }
+        } */
   }
 
   delete(idCustomer: number) {
@@ -259,5 +296,60 @@ export class CustomerListComponent implements OnInit {
     this.showAlertModal = false;
     this.showCustomerDetail = false;
     this.opacity = 1;
+  }
+
+  nextPage() {
+    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+      DataType.CUSTOMER,
+      this.customerPagination().currentPage + 1,
+      this.pagSize,
+      this.customerPagination().sortBy,
+      this.customerPagination().sortDirection
+    );
+  }
+
+  prevPage() {
+    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+      DataType.CUSTOMER,
+      this.customerPagination().currentPage - 1,
+      this.pagSize,
+      this.customerPagination().sortBy,
+      this.customerPagination().sortDirection
+    );
+  }
+
+  orderBy(col: string) {
+    let colIndex: number = 0;
+    switch (col) {
+      case 'Id':
+        colIndex = 0;
+        break;
+      case 'Nome':
+        colIndex = 1;
+        break;
+      case 'Cognome':
+        colIndex = 2;
+        break;
+    }
+    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+      DataType.CUSTOMER,
+      1,
+      this.pagSize,
+      colIndex,
+      this.customerPagination().sortDirection === CustomerSearchDirection.ASC
+        ? CustomerSearchDirection.DESC
+        : CustomerSearchDirection.ASC
+    );
+  }
+
+  pageSize(size: number) {
+    this.pagSize = size;
+    this.dataService.getAllDataPaginated('retrieveAll/paginated',
+      DataType.CUSTOMER,
+      1,
+      this.pagSize,
+      this.customerPagination().sortBy,
+      this.customerPagination().sortDirection
+    );
   }
 }
