@@ -14,7 +14,7 @@ import { AuthService } from '../services/auth.service';
     <nav class="navbar">
       <div class="nav-brand">
         <mat-icon class="brand-icon">content_cut</mat-icon>
-        <span class="brand-text" routerLink="/home">SalonFT</span>
+        <span class="brand-text" routerLink="/home" style="cursor: pointer;">SalonFT</span>
       </div>
       
       <div class="nav-links">
@@ -27,7 +27,7 @@ import { AuthService } from '../services/auth.service';
             <a routerLink="/admin/appointments" routerLinkActive="active">Appuntamenti</a>
             <a routerLink="/admin/calendar" routerLinkActive="active">Calendario</a>
           } @else {
-            <!-- a routerLink="/user/appointments" routerLinkActive="active">I Miei Appuntamenti</a> -->
+            <a routerLink="/user/appointments" routerLinkActive="active">I Miei Appuntamenti</a>
             <a routerLink="/user/calendar" routerLinkActive="active">Calendario</a>
           }
           
@@ -146,6 +146,7 @@ export class NavbarComponent {
   ) {}
 
   logout(): void {
+    console.log('User initiated logout');
     this.authService.logout();
   }
 }

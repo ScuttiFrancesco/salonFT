@@ -106,17 +106,59 @@ export class AuthService {
   refreshToken(): Observable<{ accessToken: string }> {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
+      console.error('No refresh token available');
       return throwError(() => new Error('No refresh token available'));
     }
 
-    return this.http.post<{ accessToken: string }>(`${AUTH_URL}/refresh-token`, {
-      refreshToken
+    console.log('=== REFRESH TOKEN REQUEST ===');
+    console.log('Attempting to refresh token...');
+    
+    // URL del refresh token
+    const refreshUrl = `${AUTH_URL}/refresh-token`;
+    
+    console.log('Making refresh request to:', refreshUrl);
+    console.log('Refresh token (first 20 chars):', refreshToken.substring(0, 20) + '...');
+    
+    // Invia il refresh token in ENTRAMBI i posti per essere sicuri
+    const requestBody = { refreshToken: refreshToken };
+    const requestHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${refreshToken}`
+    };
+    
+    console.log('Request body:', requestBody);
+    console.log('Request headers:', requestHeaders);
+    
+    return this.http.post<{ accessToken: string }>(refreshUrl, requestBody, {
+      headers: requestHeaders
     }).pipe(
       tap(response => {
+        console.log('=== REFRESH TOKEN SUCCESS ===');
+        console.log('Token refresh successful, new access token received');
+        console.log('New access token (first 20 chars):', response.accessToken.substring(0, 20) + '...');
+        
+        // Verifica la validità del nuovo token
+        try {
+          const payload = JSON.parse(atob(response.accessToken.split('.')[1]));
+          const currentTime = Math.floor(Date.now() / 1000);
+          const expiresIn = payload.exp - currentTime;
+          console.log('New token expires in:', expiresIn, 'seconds');
+          console.log('New token expiry time:', new Date(payload.exp * 1000).toISOString());
+        } catch (error) {
+          console.error('Error parsing new token:', error);
+        }
+        
         this.storageService.setItem(this.TOKEN_KEY, response.accessToken);
       }),
       catchError(error => {
-        this.logout();
+        console.error('=== REFRESH TOKEN FAILED ===');
+        console.error('Refresh token request failed:', error);
+        console.error('Error status:', error.status);
+        console.error('Error details:', error.error);
+        
+        // Clear tokens on refresh failure
+        this.storageService.removeItem(this.TOKEN_KEY);
+        this.storageService.removeItem(this.REFRESH_TOKEN_KEY);
         return throwError(() => error);
       })
     );

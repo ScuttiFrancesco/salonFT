@@ -9,7 +9,8 @@ import { AlertModalComponent } from "./components/alert-modal.component";
   standalone: true,
   imports: [RouterOutlet, NavbarComponent, AlertModalComponent],
   template: `
-    <app-navbar />   <div style="width: 100wv; height: 100hw" [style.opacity]="messaggioErrore() || messaggioSuccesso() ? 0.5 : 1">
+    <app-navbar></app-navbar>
+    <div style="width: 100wv; height: 100hw" [style.opacity]="messaggioErrore() || messaggioSuccesso() ? 0.5 : 1">
     <router-outlet /> </div>
     @if(messaggioErrore()){
     <app-alert-modal [title]="'Messaggio di Errore'" [message]="messaggioErrore()" (confirm)="closeAlert()"/>

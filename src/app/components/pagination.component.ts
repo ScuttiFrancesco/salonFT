@@ -16,22 +16,26 @@ import { MatIconModule } from '@angular/material/icon';
          <mat-icon (click)="prevPage.emit()">chevron_left</mat-icon>
        </span>
        
-      
        <mat-icon>more_horiz</mat-icon>
          
-      }<span
-         class="pag">
+      }
+      <span class="pag">
          {{ currentPage() }}
        </span>
-       @if(currentPage() < totalPages()){<mat-icon>more_horiz</mat-icon> 
+       @if(currentPage() < totalPages()){
+         <mat-icon>more_horiz</mat-icon> 
 
          <span>
            <mat-icon (click)="nextPage.emit()">chevron_right</mat-icon>
-         </span><span>
-        
+         </span>
+         <span>
            <mat-icon (click)="lastPage.emit()">last_page</mat-icon>
          </span> 
-         }
+       }
+       
+       <div class="page-info">
+         Pagina {{ currentPage() }} di {{ totalPages() }}
+       </div>
      </div>
      <select name="totalElements" [value]="currentPageSize()" (change)="onPageSizeChange($event)">
        @for(size of [5, 8, 10, 15, 20, 50]; track $index){
@@ -46,46 +50,60 @@ import { MatIconModule } from '@angular/material/icon';
   
   .table-footer{
     display: grid;
-    grid-template-columns: 95% 5%;
+    grid-template-columns: 85% 15%;
     align-items: center;
     padding: 20px 50px 0 50px;
   }
   
   mat-icon {
- font-size: 1.75rem;
- cursor: pointer;
- margin: 0 5px;
- 
- }
+    font-size: 1.75rem;
+    cursor: pointer;
+    margin: 0 5px;
+  }
 
- button{
- background-color: transparent;
- border: none;
- cursor: pointer;
- padding: 0;
- margin: 4px 0;
- }
- button:hover {
- background-color: rgba(0, 0, 0, 0.1);
- border-radius: 5px;
- }
+  button{
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    margin: 4px 0;
+  }
+  
+  button:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-radius: 5px;
+  }
 
- .pag{
-  border: 1px solid black;
-  border-radius: 5px;
-  width: 25px;
-  text-align: center;
-  cursor: pointer;
-  color:brown;
-  font-weight: bold;
-  margin: 0 5px;
- }
+  .pag{
+    border: 1px solid black;
+    border-radius: 5px;
+    width: 30px;
+    text-align: center;
+    cursor: pointer;
+    color: brown;
+    font-weight: bold;
+    margin: 0 5px;
+    padding: 2px;
+  }
+  
   .pagination {
     display: flex;
     justify-content: center;
     align-items: center;
     margin: 10px;
-    
+    gap: 5px;
+  }
+
+  .page-info {
+    margin-left: 15px;
+    font-size: 0.9rem;
+    color: #666;
+  }
+
+  select {
+    padding: 5px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
   }
   `
 })
