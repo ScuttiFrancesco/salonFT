@@ -1,62 +1,151 @@
-import { Component } from '@angular/core';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
+import { Component, computed } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { Router, RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
-import { RouterLink } from '@angular/router';
+import { MatButtonModule } from '@angular/material/button';
+import { MatMenuModule } from '@angular/material/menu';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-navbar',
   standalone: true,
-  imports: [MatToolbarModule, MatButtonModule, MatIconModule, RouterLink],
+  imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule, MatMenuModule],
   template: `
-    <mat-toolbar>
-      <div>SALON</div>
-      <button mat-raised-button routerLink="/">
-        <mat-icon>home</mat-icon> Home
-      </button>
-      <span class="spacer"></span>
-      <button mat-raised-button routerLink="/calendar">
-        <mat-icon>date_range</mat-icon> Agenda
-      </button>
-      <button mat-raised-button routerLink="/appointment-list">
-        <mat-icon>call</mat-icon> Appuntamenti
-      </button>
-      <button mat-raised-button routerLink="/customer-list">
-        <mat-icon>people </mat-icon> Clienti
-      </button>
-      <mat-icon>logout</mat-icon>
-    </mat-toolbar>
+    <nav class="navbar">
+      <div class="nav-brand">
+        <mat-icon class="brand-icon">content_cut</mat-icon>
+        <span class="brand-text" routerLink="/home">SalonFT</span>
+      </div>
+      
+      <div class="nav-links">
+        @if (!authService.isAuthenticated()) {
+          <a routerLink="/home" routerLinkActive="active">Home</a>
+          <a routerLink="/login" class="login-btn">Accedi</a>
+        } @else {
+          @if (authService.isAdmin()) {
+            <a routerLink="/admin/customers" routerLinkActive="active">Clienti</a>
+            <a routerLink="/admin/appointments" routerLinkActive="active">Appuntamenti</a>
+            <a routerLink="/admin/calendar" routerLinkActive="active">Calendario</a>
+          } @else {
+            <!-- a routerLink="/user/appointments" routerLinkActive="active">I Miei Appuntamenti</a> -->
+            <a routerLink="/user/calendar" routerLinkActive="active">Calendario</a>
+          }
+          
+          <div class="user-menu">
+            <button mat-icon-button [matMenuTriggerFor]="userMenuRef">
+              <mat-icon>account_circle</mat-icon>
+            </button>
+            <mat-menu #userMenuRef="matMenu">
+              <div class="user-info">
+                <strong>{{ authService.currentUser()?.name || authService.currentUser()?.email }}</strong>
+                <small>{{ authService.currentUser()?.role }}</small>
+              </div>
+              <button mat-menu-item (click)="logout()">
+                <mat-icon>logout</mat-icon>
+                Logout
+              </button>
+            </mat-menu>
+          </div>
+        }
+      </div>
+    </nav>
   `,
   styles: `
-    mat-toolbar {
-      background-color: rgb(233, 233, 233);
+    .navbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background: linear-gradient(135deg,rgb(142, 35, 35) 0%, brown 100%);
       color: white;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .nav-brand {
       display: flex;
       align-items: center;
-      gap: 1.25rem;
-      height: 80px;
-    }
-
-    div {
-      font-size: 2.75rem;
-      font-weight: bold;
-      color: brown;
-      letter-spacing: 5px;
-      margin: 0;
-      text-shadow: 3px 3px 3px rgba(0, 0, 0, 0.3);
-    }
-
-    .spacer {
-      flex: 1 1 auto;
-    }
-
- 
-
-    mat-icon {
-      color: rgba(0, 0, 0, 0.51);
-      font-size: 1.75rem;
+      gap: 8px;
+      font-size: 1.5rem;
+      font-weight: 700;
       cursor: pointer;
     }
-  `,
+
+    .brand-icon {
+      font-size: 2rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+
+    .nav-links a {
+      color: white;
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      transition: background-color 0.3s ease;
+      font-weight: 500;
+    }
+
+    .nav-links a:hover,
+    .nav-links a.active {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .login-btn {
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .login-btn:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .user-menu button {
+      color: white;
+    }
+
+    .user-info {
+      padding: 8px 16px;
+      border-bottom: 1px solid #eee;
+      margin-bottom: 8px;
+    }
+
+    .user-info strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .user-info small {
+      color: #666;
+      font-size: 0.8rem;
+    }
+
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 8px 16px;
+      }
+      
+      .nav-links {
+        gap: 12px;
+      }
+      
+      .nav-links a {
+        padding: 6px 12px;
+        font-size: 0.9rem;
+      }
+    }
+  `
 })
-export class NavbarComponent {}
+export class NavbarComponent {
+  constructor(
+    public authService: AuthService,
+    private router: Router
+  ) {}
+
+  logout(): void {
+    this.authService.logout();
+  }
+}

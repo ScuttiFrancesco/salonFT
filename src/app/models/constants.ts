@@ -1,6 +1,7 @@
 import e from 'express';
 
 export const API_URL = 'http://localhost:8080/api';
+export const AUTH_URL = 'http://localhost:8080/auth';
 
 export enum DataType {
   CUSTOMER = 0,
