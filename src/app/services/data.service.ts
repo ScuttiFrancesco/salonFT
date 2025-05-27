@@ -14,7 +14,8 @@ export class DataService {
   customers = signal<Customer[]>([]);
   customer = signal<Customer>({} as Customer);
   customerPagination = signal<PaginationInfo>({} as PaginationInfo);
-  filtredCustomers = signal<Customer[]>([]);
+  appointmentPagination = signal<PaginationInfo>({} as PaginationInfo);
+  
   appointments = signal<TableAppointment[]>([]);
   appointment = signal<TableAppointment>({} as TableAppointment);
   filtredAppointments = signal<TableAppointment[]>([]);
@@ -22,11 +23,16 @@ export class DataService {
   messaggioSuccesso = signal<string>('');
   pagSize = 10;
 
-  constructor(private http: HttpClient) {
-    
-  }
+  constructor(private http: HttpClient) {}
 
-  getAllDataPaginated(endpoint:string ,type : number, page: number, size: number, sortBy: number, sortDir: number) {
+  getAllDataPaginated(
+    endpoint: string,
+    type: number,
+    page: number,
+    size: number,
+    sortBy: number,
+    sortDir: number
+  ) {
     this.http
       .get<any>(
         `${API_URL}/${type}/${endpoint}?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
@@ -40,8 +46,8 @@ export class DataService {
           }
           if (type === DataType.APPOINTMENT) {
             this.appointments.set([]);
-
-            response.content.forEach((appointment: Appointment) => {
+            this.appointmentPagination.set(response.pagination);
+            response.data.forEach((appointment: Appointment) => {
               this.http
                 .get<Customer>(`${API_URL}/0/${appointment.customerId}`)
                 .subscribe({
@@ -68,11 +74,7 @@ export class DataService {
                     );
                   },
                 });
-            });
-            console.log(
-              'Appointments fetched successfully:',
-              this.appointments()
-            );
+            });           
           }
         })
       )
@@ -108,7 +110,6 @@ export class DataService {
                     ...this.appointments(),
                     tableAppointment,
                   ]);
-                  
                 },
                 error: (error) => {
                   this.messaggioErrore.set(error.error.message);
@@ -161,65 +162,10 @@ export class DataService {
                   error
                 );
               },
-            });         
-          }
-          
-          console.log('Appointment caricato successfully:', this.appointment());
-      },
-      error: (error) => {
-        this.messaggioErrore.set(error.error.message);
-        console.error('Error fetching customers:', error);
-      },
-    });
-  }
-
-  getSearchedData(type: string, searchTerm: string) {
-    this.http.get<any>(`${API_URL}/${type}=${searchTerm}`).subscribe({
-      next: (response) => {
-        if (type.includes(DataType[DataType.CUSTOMER].toLowerCase())) {
-          this.filtredCustomers.set(response);
-          console.log(
-            'Filtred Customers fetched successfully:',
-            this.filtredCustomers()
-          );
+            });
         }
-        if (type.includes(DataType[DataType.APPOINTMENT].toLowerCase())) {
-        this.filtredAppointments.set([]);
 
-          response.forEach((appointment: Appointment) => {
-            this.http
-              .get<Customer>(`${API_URL}/customer/${appointment.customerId}`)
-              .subscribe({
-                next: (customer) => {
-                  const tableAppointment: TableAppointment = {
-                    id: appointment.id,
-                    date: appointment.date,
-                    duration: appointment.duration.toString(),
-                    services: appointment.services,
-                    notes: appointment.notes,
-                    customer: customer,
-                  };
-
-                  this.filtredAppointments.set([
-                    ...this.filtredAppointments(),
-                    tableAppointment,
-                  ]);
-                  
-                },
-                error: (error) => {
-                  this.messaggioErrore.set(error.error.message);
-                  console.error(
-                    'Error fetching customer for appointment:',
-                    error
-                  );
-                },
-              });
-          });
-          console.log(
-            'Appointments fetched successfully:',
-            this.filtredAppointments()
-          );
-        }
+        console.log('Appointment caricato successfully:', this.appointment());
       },
       error: (error) => {
         this.messaggioErrore.set(error.error.message);
@@ -241,7 +187,8 @@ export class DataService {
           console.log('Customer updated successfully:', response);
         }
         if (type === DataType[DataType.APPOINTMENT].toLowerCase()) {
-         this.http.get<Customer>(`${API_URL}/customer/${response.customerId}`)
+          this.http
+            .get<Customer>(`${API_URL}/customer/${response.customerId}`)
             .subscribe({
               next: (customer) => {
                 const tableAppointment: TableAppointment = {
@@ -266,7 +213,7 @@ export class DataService {
                 );
               },
             });
-          
+
           this.messaggioSuccesso.set('Appuntamento aggiornato con successo');
           console.log('Appointment updated successfully:', response);
         }

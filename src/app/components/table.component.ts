@@ -16,7 +16,7 @@ import { FormsModule } from '@angular/forms';
          @for(col of colonne(); track $index){
          <th>
            {{ col }} @if(col === 'Id' || col === 'Nome' || col === 'Cognome'
-           || col === 'Giorno' || col === 'Ora'){<mat-icon (click)="orderBy.emit(col)">import_export</mat-icon>}
+           || col === 'Giorno' || col === 'Durata' || col === 'Cliente'){<mat-icon (click)="orderBy.emit(col)">import_export</mat-icon>}
          </th>
          }
          <th></th>
@@ -41,34 +41,9 @@ import { FormsModule } from '@angular/forms';
        }@empty { Nessun dato disponibile }
      </tbody>
    </table>
-   <div class="table-footer">
-     <div class="pagination">
-       @if(currentPage() > 1){
-       <span>
-         <mat-icon (click)="prevPage.emit()">chevron_left</mat-icon>
-       </span>
-       <!--  <span> <mat-icon (click)="pageIndex = 0">first_page</mat-icon></span> <span> <mat-icon >more_horiz</mat-icon></span> -->}<span
-         class="pag">
-         {{ currentPage() }}
-       </span>
-       @if(currentPage() < totalPages()){<!-- <span>
-         <mat-icon>more_horiz</mat-icon></span><span>
-           <mat-icon (click)="pageIndex = totalPages - 1">last_page</mat-icon>
-         </span> -->
+   <ng-content></ng-content>
 
-         <span>
-           <mat-icon (click)="nextPage.emit()">chevron_right</mat-icon>
-         </span>
-         }
-     </div>
-     <select name="totalElements" [value]="currentPageSize()" (change)="onPageSizeChange($event)">
-       @for(size of [5, 8, 10, 15, 20, 50]; track $index){
-       <option [value]="size">
-         {{ size }}
-       </option>
-       }
-     </select>
-   </div>
+
  </div>
   `,
   styles: `
@@ -147,6 +122,7 @@ import { FormsModule } from '@angular/forms';
   cursor: pointer;
   color:brown;
   font-weight: bold;
+  margin: 0 5px;
  }
   .pagination {
     display: flex;
@@ -164,21 +140,12 @@ export class TableComponent {
   delete = output<any>();
   more_vert = output<any>();
   icons = input<string[]>(['delete', 'info', 'more_vert']);
-  nextPage = output<void>();
-  prevPage = output<void>();
-  currentPage = input<number>(1);
-  totalPages = input<number>(1);
-  currentPageSize = input<number>(10); // Aggiungi questo input per il valore corrente
-  pageSize = output<number>();
-  orderBy = output<string>();
+    orderBy = output<string>();
+ 
 
   getCellValues(row: any): any[] {
     return Array.isArray(row) ? row : Object.values(row);
   }
 
-  onPageSizeChange(event: Event) {
-    const target = event.target as HTMLSelectElement;
-    const newSize = parseInt(target.value, 10);
-    this.pageSize.emit(newSize);
-  }
+  
 }

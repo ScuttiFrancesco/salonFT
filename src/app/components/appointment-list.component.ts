@@ -1,9 +1,6 @@
 import { Component, computed, OnInit, effect } from '@angular/core';
 import { TableComponent } from './table.component';
 import { DataService } from '../services/data.service';
-import { log } from 'console';
-import { interval } from 'rxjs';
-import { Customer, TableCustomer } from '../models/customer';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import {
@@ -12,9 +9,13 @@ import {
   FormGroup,
   ReactiveFormsModule,
 } from '@angular/forms';
-import { DataType } from '../models/constants';
+import {
+  CustomerSearchDirection,
+  CustomerSearchType,
+  DataType,
+} from '../models/constants';
 import { debounceTime } from 'rxjs/operators';
-import { MatIcon, MatIconModule } from '@angular/material/icon';
+import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { InputComponent } from './input.component';
 import { AppointmentDetailComponent } from './appointment-detail.component';
@@ -23,12 +24,12 @@ import { ViewChild } from '@angular/core';
 import {
   MAT_DATE_LOCALE,
   MatNativeDateModule,
-  DateAdapter,
   MAT_DATE_FORMATS,
 } from '@angular/material/core';
 import { LOCALE_ID } from '@angular/core';
 import { Appointment, TableAppointment } from '../models/appointment';
-import { CustomerDetailComponent } from './customer-detail.component';
+import { PaginationComponent } from './pagination.component';
+
 
 // Formato date personalizzato per NativeDateAdapter
 const CUSTOM_NATIVE_DATE_FORMATS = {
@@ -53,12 +54,13 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
     ReactiveFormsModule,
     MatIconModule,
     InputComponent,
-    AppointmentDetailComponent,
     AlertModalComponent,
     MatDatepickerModule,
     MatNativeDateModule,
-    CustomerDetailComponent,
+    PaginationComponent,
+    AppointmentDetailComponent,
   ],
+
   providers: [
     { provide: MAT_DATE_LOCALE, useValue: 'it-IT' },
     { provide: LOCALE_ID, useValue: 'it-IT' },
@@ -79,9 +81,7 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
           <mat-label>Inserisci un intervallo di date</mat-label>
           <mat-date-range-input
             [formGroup]="range"
-            [rangePicker]="picker"
-            [min]="minDate"
-            [max]="maxDate"
+            [rangePicker]="picker"          
           >
             <input
               matStartDate
@@ -120,8 +120,20 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
         [righe]="righe"
         (info)="infoAppointment($event)"
         (delete)="delete($event)"
-        [currentPageSize]="currentPageSize"
-      ></app-table>
+        (orderBy)="orderBy($event)"
+      >
+        <app-pagination
+          [currentPage]="appointmentPagination().currentPage"
+          [totalPages]="appointmentPagination().totalPages"
+          [currentPageSize]="pagSize"
+          (nextPage)="nextPage()"
+          (prevPage)="prevPage()"
+          (firstPage)="initialData(getSearchEndpoint())"
+          (lastPage)="lastPage()"
+          (pageSize)="pageSize($event)"
+        >
+        </app-pagination>
+      </app-table>
     </div>
     } @placeholder {
     <div class="loader-container">
@@ -194,6 +206,10 @@ error-message {
 export class AppointmentListComponent implements OnInit {
   customers = computed(() => this.dataService.customers());
   appointment = computed(() => this.dataService.appointment());
+  appointments = computed(() => this.dataService.appointments());
+  appointmentPagination = computed(() =>
+    this.dataService.appointmentPagination()
+  );
   colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefono'];
   nameInput = new FormControl('');
   showAppointmentDetail = false;
@@ -202,11 +218,10 @@ export class AppointmentListComponent implements OnInit {
   message: string = '';
   deletingAppointmentId: number | null = null;
   opacity = 1;
-  currentPageSize = 10; // Aggiungi questa proprietà
+  currentPageSize = 10;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
-  minDate: unknown;
-  maxDate: unknown;
   range: FormGroup<any>;
+  pagSize = 5;
 
   constructor(private dataService: DataService, private fb: FormBuilder) {
     this.range = this.fb.group({
@@ -219,14 +234,14 @@ export class AppointmentListComponent implements OnInit {
         this.deletingAppointmentId != null &&
         a.id === this.deletingAppointmentId
       ) {
-         let formattedDate = 'data sconosciuta';
+        let formattedDate = 'data sconosciuta';
         if (a.date) {
           try {
             const appointmentDate = new Date(a.date);
             formattedDate = appointmentDate.toLocaleDateString('it-IT', {
               year: 'numeric',
               month: '2-digit',
-              day: '2-digit'
+              day: '2-digit',
             });
           } catch (error) {
             console.error('Errore nella formattazione della data', error);
@@ -239,40 +254,46 @@ export class AppointmentListComponent implements OnInit {
     });
   }
   ngOnInit(): void {
-    this.dataService.getAllData(DataType[DataType.APPOINTMENT].toLowerCase());
+    this.initialData();
     this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
-      if (value) {
-        this.range.reset();
-       /*  if (this.tableComponent) {
-          this.tableComponent.pageIndex = 0;
-        } */
-
-        this.dataService.getSearchedData(
-          DataType[DataType.APPOINTMENT].toLowerCase() +
-            `/retrieveAll/customer`,
-          value ?? ''
-        );
-      }else{
-        this.range.reset();
-        this.dataService.filtredAppointments.set([]);
-        this.dataService.getSearchedData(
-          DataType[DataType.APPOINTMENT].toLowerCase() +
-            `/retrieveAll/customer`,
-          value ?? ''
-        );
-      }
+      // Quando cambia il nome, ricarica con tutti i filtri attivi
+      this.initialData(this.getSearchEndpoint());
     });
+  }
+
+  initialData(value: string = '') {
+    if (value !== '') {
+      this.dataService.getAllDataPaginated(
+        value,
+        DataType.APPOINTMENT,
+        1,
+        this.pagSize,
+        CustomerSearchType.ID,
+        CustomerSearchDirection.ASC
+      );
+    } else {
+      this.dataService.getAllDataPaginated(
+        'retrieveAll/paginated',
+        DataType.APPOINTMENT,
+        1,
+        this.pagSize,
+        CustomerSearchType.ID,
+        CustomerSearchDirection.ASC
+      );
+    }
   }
 
   get righe(): TableAppointment[] {
     const searchValue = this.nameInput.value?.trim();
-    const list =
-      searchValue && searchValue.length > 0
-        ? this.dataService.filtredAppointments()
-        : this.dataService.appointments();
-    if (!list || !Array.isArray(list) || list.length === 0) return [];
 
-    return list.map((appointment) => ({
+    if (
+      !this.appointments() ||
+      !Array.isArray(this.appointments()) ||
+      this.appointments().length === 0
+    )
+      return [];
+
+    return this.appointments().map((appointment) => ({
       id: appointment.id,
       customerName:
         appointment.customer?.name + ' ' + appointment.customer?.surname!,
@@ -294,9 +315,6 @@ export class AppointmentListComponent implements OnInit {
     this.showAppointmentDetail = true;
     this.dataService.appointment.set({} as TableAppointment);
     this.opacity = 0.5;
-   /*  if (this.tableComponent) {
-      this.tableComponent.pageIndex = 0;
-    } */
   }
 
   delete(idAppontment: number) {
@@ -309,7 +327,7 @@ export class AppointmentListComponent implements OnInit {
   }
 
   confirmDeleting(event: boolean) {
- if (event) {
+    if (event) {
       this.dataService.deleteData(
         DataType[DataType.APPOINTMENT].toLowerCase(),
         this.appointment().id
@@ -328,55 +346,36 @@ export class AppointmentListComponent implements OnInit {
 
   resetDateRange() {
     this.range.reset();
-    this.dataService.filtredAppointments.set([]);
-    /* if (this.tableComponent) {
-      this.tableComponent.pageIndex = 0;
-    } */
-    if (this.nameInput.value) {
-      this.dataService.getSearchedData(
-        DataType[DataType.APPOINTMENT].toLowerCase() + `/retrieveAll/customer`,
-        this.nameInput.value ?? ''
-      );
-    } else {
-      this.dataService.getAllData(DataType[DataType.APPOINTMENT].toLowerCase());
-    }
+    // Dopo aver resettato le date, ricarica con il filtro nome se presente
+    this.initialData(this.getSearchEndpoint());
   }
 
   onDateChange() {
     const startDate = this.range.get('start')?.value;
     const endDate = this.range.get('end')?.value;
 
-    console.log('Date range selected:', { startDate, endDate });
-
     if (startDate && endDate && this.range.valid) {
-      const formattedStartDate = this.formatDate(new Date(startDate));
-      const formattedEndDate = this.formatDate(new Date(endDate));
-
-      if (this.dataService.filtredAppointments().length > 0) {
-        this.dataService.filtredAppointments.set(
-          this.dataService.filtredAppointments().filter((appointment) => {
-            const appointmentDate = new Date(appointment.date);
-            return (
-              appointmentDate >= new Date(startDate) &&
-              appointmentDate <= new Date(endDate)
-            );
-          })
-        );
-      } else {
-        this.dataService.getAllData(
-          DataType[DataType.APPOINTMENT].toLowerCase(),
-          `date-range=${formattedStartDate}/${formattedEndDate}`
-        );
-      }
-
-     /*  if (this.tableComponent) {
-        this.tableComponent.pageIndex = 0;
-      } */
+      // Se entrambe le date sono selezionate, aggiorna i dati
+      let endpoint = this.getSearchEndpoint();
+      this.dataService.getAllDataPaginated(
+        endpoint,
+        DataType.APPOINTMENT,
+        1, // Torna sempre alla prima pagina quando cambiano i filtri
+        this.pagSize,
+        CustomerSearchType.ID,
+        CustomerSearchDirection.ASC
+      );
     } else if (!startDate && !endDate) {
-      this.dataService.filtredAppointments.set([]);
-      /* if (this.tableComponent) {
-        this.tableComponent.pageIndex = 0;
-      } */
+      // Se le date sono state cancellate, aggiorna con solo il filtro nome (se presente)
+      let endpoint = this.getSearchEndpoint();
+      this.dataService.getAllDataPaginated(
+        endpoint,
+        DataType.APPOINTMENT,
+        1,
+        this.pagSize,
+        CustomerSearchType.ID,
+        CustomerSearchDirection.ASC
+      );
     }
   }
 
@@ -405,5 +404,111 @@ export class AppointmentListComponent implements OnInit {
     );
     this.showAppointmentDetail = true;
     this.opacity = 0.5;
+  }
+
+  nextPage() {
+    let endpoint = this.getSearchEndpoint();
+    this.dataService.getAllDataPaginated(
+      endpoint,
+      DataType.APPOINTMENT,
+      this.appointmentPagination().currentPage + 1,
+      this.pagSize,
+      this.appointmentPagination().sortBy,
+      this.appointmentPagination().sortDirection
+    );
+  }
+
+  prevPage() {
+    let endpoint = this.getSearchEndpoint();
+    this.dataService.getAllDataPaginated(
+      endpoint,
+      DataType.APPOINTMENT,
+      this.appointmentPagination().currentPage - 1,
+      this.pagSize,
+      this.appointmentPagination().sortBy,
+      this.appointmentPagination().sortDirection
+    );
+  }
+
+  orderBy(col: string) {
+    let colIndex: number = 0;
+    switch (col) {
+      case 'Id':
+        colIndex = 0;
+        break;
+      case 'Giorno':
+        colIndex = 1;
+        break;
+      case 'Cliente':
+        colIndex = 2;
+        break;
+      case 'Durata':
+        colIndex = 4;
+        break;
+    }
+    this.dataService.getAllDataPaginated(
+      'retrieveAll/paginated',
+      DataType.APPOINTMENT,
+      1,
+      this.pagSize,
+      colIndex,
+      this.appointmentPagination().sortDirection === CustomerSearchDirection.ASC
+        ? CustomerSearchDirection.DESC
+        : CustomerSearchDirection.ASC
+    );
+  }
+
+  pageSize(size: number) {
+    // Non resettare più i filtri quando cambia la dimensione della pagina
+    this.pagSize = size;
+    
+    // Mantieni i filtri attivi quando cambia la dimensione della pagina
+    let endpoint = this.getSearchEndpoint();
+    
+    this.dataService.getAllDataPaginated(
+      endpoint,
+      DataType.APPOINTMENT,
+      1,
+      this.pagSize,
+      this.appointmentPagination().sortBy,
+      this.appointmentPagination().sortDirection
+    );
+  }
+
+  lastPage() {
+    let endpoint = this.getSearchEndpoint();
+    this.dataService.getAllDataPaginated(
+      endpoint,
+      DataType.APPOINTMENT,
+      this.appointmentPagination().totalPages,
+      this.pagSize,
+      this.appointmentPagination().sortBy,
+      this.appointmentPagination().sortDirection
+    );
+  }
+
+  getSearchEndpoint(): string {
+    const startDate = this.range.get('start')?.value;
+    const endDate = this.range.get('end')?.value;
+    const nameValue = this.nameInput.value?.trim();
+
+    // Se abbiamo sia nome che date
+    if (nameValue && startDate && endDate) {
+      const formattedStartDate = this.formatDate(new Date(startDate));
+      const formattedEndDate = this.formatDate(new Date(endDate));
+      return `dateRange=${formattedStartDate}/${formattedEndDate}/customerName=${nameValue}`;
+    }
+    // Se abbiamo solo le date
+    else if (startDate && endDate) {
+      const formattedStartDate = this.formatDate(new Date(startDate));
+      const formattedEndDate = this.formatDate(new Date(endDate));
+      return `dateRange=${formattedStartDate}/${formattedEndDate}`;
+    }
+    // Se abbiamo solo il nome
+    else if (nameValue) {
+      return `searchByCustomerName=${nameValue}`;
+    }
+    // Nessun filtro
+    return 'retrieveAll/paginated';
   }
 }

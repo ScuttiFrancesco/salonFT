@@ -21,6 +21,7 @@ import { AlertModalComponent } from './alert-modal.component';
 import { ViewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import e from 'express';
+import { PaginationComponent } from './pagination.component';
 
 @Component({
   selector: 'app-customer-list',
@@ -34,69 +35,53 @@ import e from 'express';
     InputComponent,
     CustomerDetailComponent,
     AlertModalComponent,
+    PaginationComponent,
   ],
   template: `
     @defer (when righe.length > 0;) {
     <div [style.opacity]="opacity">
       <div class="title">Lista Clienti</div>
-
       <div class="search-container">
-        <app-input
-          [placeholder]="'Cerca per nominativo'"
-          [type]="'text'"
-          [formControl]="nameInput"
-        />
-        <app-input
-          [placeholder]="'Cerca per email'"
-          [type]="'email'"
-          [formControl]="emailInput"
-        />
-        <app-input
-          [placeholder]="'Cerca per telefono'"
-          [type]="'text'"
-          [formControl]="phoneInput"
-        />
+        <app-input [placeholder]="'Cerca per nominativo'" [type]="'text'" [formControl]="nameInput" />
+        <app-input [placeholder]="'Cerca per email'" [type]="'email'" [formControl]="emailInput" />
+        <app-input [placeholder]="'Cerca per telefono'" [type]="'text'" [formControl]="phoneInput" />
         <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>
       </div>
-      <app-table
-        [icons]="['delete', 'info']"
-        [colonne]="colonne"
+      
+      <app-table 
+        [icons]="['delete', 'info']" 
+        [colonne]="colonne" 
         [righe]="righe"
-        (pageSize)="pageSize($event)"
-        [currentPage]="customerPagination().currentPage"
-        [totalPages]="customerPagination().totalPages"
-        [currentPageSize]="pagSize"
-        (nextPage)="nextPage()"
-        (prevPage)="prevPage()"
         (orderBy)="orderBy($event)"
-        (info)="infoCustomer($event)"
-        (delete)="delete($event)"
-      ></app-table>
+        (info)="infoCustomer($event)" 
+        (delete)="delete($event)">
+                
+        <app-pagination
+          [currentPage]="customerPagination().currentPage"
+          [totalPages]="customerPagination().totalPages"
+          [currentPageSize]="pagSize"
+          (nextPage)="nextPage()"
+          (prevPage)="prevPage()"
+          (firstPage)="initialData(getSearchEndpoint())"
+          (lastPage)="lastPage()"
+          (pageSize)="pageSize($event)">
+        </app-pagination>
+        
+      </app-table>
     </div>
-    } @placeholder {
-    <div class="loader-container">
-      <mat-progress-spinner
-        mode="indeterminate"
-        [diameter]="32"
-      ></mat-progress-spinner>
-      <div class="loading">Caricamento...</div>
-    </div>
-    } @if (showCustomerDetail) {
-    <app-customer-detail
-      [customer]="customer()"
-      (close)="showCustomerDetail = false; opacity = 1"
-      (update)="updateCustomer($event)"
-      (delete)="delete($event)"
-    />
-    } @if(showAlertModal){
-    <app-alert-modal
-      [title]="'Elimina Cliente'"
-      [confirmation]="true"
-      (confirm)="confirmDeleting($event)"
-      [message]="message"
-    />
+ } @placeholder {
+ <div class="loader-container">
+   <mat-progress-spinner mode="indeterminate" [diameter]="32"></mat-progress-spinner>
+   <div class="loading">Caricamento...</div>
+ </div>
+ } @if (showCustomerDetail) {
+ <app-customer-detail [customer]="customer()" (close)="showCustomerDetail = false; opacity = 1"
+   (update)="updateCustomer($event)" (delete)="delete($event)" />
+ } @if(showAlertModal){
+ <app-alert-modal [title]="'Elimina Cliente'" [confirmation]="true" (confirm)="confirmDeleting($event)"
+   [message]="message" />
 
-    }
+ }
   `,
   styles: `
   .add{
@@ -311,7 +296,7 @@ export class CustomerListComponent implements OnInit {
   }
 
   prevPage() {
-   let endpoint = 'retrieveAll/paginated';
+    let endpoint = 'retrieveAll/paginated';
     if (this.nameInput.value?.trim()) {
       endpoint = 'searchByName=' + this.nameInput.value?.trim();
     } else if (this.emailInput.value?.trim()) {
@@ -368,5 +353,35 @@ export class CustomerListComponent implements OnInit {
       this.customerPagination().sortBy,
       this.customerPagination().sortDirection
     );
+  }
+
+  lastPage(){
+    let endpoint = 'retrieveAll/paginated';
+    if (this.nameInput.value?.trim()) {
+      endpoint = 'searchByName=' + this.nameInput.value?.trim();
+    } else if (this.emailInput.value?.trim()) {
+      endpoint = 'searchByEmail=' + this.emailInput.value?.trim();
+    } else if (this.phoneInput.value?.trim()) {
+      endpoint = 'searchByPhoneNumber=' + this.phoneInput.value?.trim();
+    }
+    this.dataService.getAllDataPaginated(
+      endpoint,
+      DataType.CUSTOMER,
+      this.customerPagination().totalPages,
+      this.pagSize,
+      this.customerPagination().sortBy,
+      this.customerPagination().sortDirection
+    );
+  }
+
+  getSearchEndpoint(): string {
+    if (this.nameInput.value?.trim()) {
+      return 'searchByName=' + this.nameInput.value?.trim();
+    } else if (this.emailInput.value?.trim()) {
+      return 'searchByEmail=' + this.emailInput.value?.trim();
+    } else if (this.phoneInput.value?.trim()) {
+      return 'searchByPhoneNumber=' + this.phoneInput.value?.trim();
+    }
+    return 'retrieveAll/paginated';
   }
 }

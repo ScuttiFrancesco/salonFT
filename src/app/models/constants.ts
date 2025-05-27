@@ -19,3 +19,11 @@ export enum CustomerSearchDirection {
   ASC = 0,
   DESC = 1,
 }
+
+export enum AppointmentSearchType {
+  ID = 0,
+  DATE = 1,
+  CUSTOMER_NAME = 2,
+  OPERATOR_NAME = 3,
+  DURATION = 4,
+}
