@@ -21,6 +21,7 @@ import { DataType } from '../models/constants';
 import { CustomerDetailComponent } from './customer-detail.component';
 import { MatChipsModule } from '@angular/material/chips';
 import { FormsModule } from '@angular/forms';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-appointment-detail',
@@ -86,7 +87,8 @@ import { FormsModule } from '@angular/forms';
               <mat-icon>close</mat-icon>
             </button>
           </div>
-          <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>
+          @if(authService.isAdmin()){
+          <mat-icon class="add" (click)="formInsertCustomer()">add</mat-icon>}
         </div>
 
         <div class="customer-detail">
@@ -172,8 +174,9 @@ import { FormsModule } from '@angular/forms';
 
         <div class="buttons-container">
           <button class="close-button" type="button" (click)="close.emit()">
-            Annulla
+            Chiudi
           </button>
+          @if(authService.isAdmin()){
           <button
             type="button"
             (click)="saveAppointment()"
@@ -193,7 +196,7 @@ import { FormsModule } from '@angular/forms';
              <button class="delete-button" type="button" (click)="delete.emit(appointment().id)">
             Elimina
           </button>
-          }
+          }}
         </div>
       </form>
     </div>
@@ -441,7 +444,7 @@ export class AppointmentDetailComponent {
   selectedServices: string[] = [];
 
 
-  constructor(private fb: FormBuilder, private dataService: DataService) {
+  constructor(private fb: FormBuilder, private dataService: DataService, public authService: AuthService) {
     this.appointmentForm = this.fb.group({
       customerSearch: this.customerSearch,
       customerId: this.customerId,
@@ -518,9 +521,16 @@ export class AppointmentDetailComponent {
   ngOnInit() {
     this.setControls();
 
-    // Ensure we have the latest customer list
+    // Carica i customers per l'autocomplete se non sono già disponibili
     if (this.availableCustomers.length === 0) {
-      this.dataService.getAllData(DataType[DataType.CUSTOMER].toLowerCase());
+      this.dataService.getCustomersForAutocomplete().subscribe({
+        next: (customers) => {
+          console.log('Customers loaded for autocomplete:', customers.length);
+        },
+        error: (error) => {
+          console.error('Error loading customers for autocomplete:', error);
+        }
+      });
     }
   }
 

@@ -103,10 +103,32 @@ export class AuthService {
     );
   }
 
+  logout(): void {
+    console.log('Logging out user');
+    
+    // Pulisci tutti i token
+    this.storageService.removeItem(this.TOKEN_KEY);
+    this.storageService.removeItem(this.REFRESH_TOKEN_KEY);
+    this.storageService.removeItem(this.USER_KEY);
+    
+    // Reset dello stato utente
+    this._currentUser.set(null);
+    this._isAuthenticated.set(false);
+    this._isLoading.set(false);
+    
+    // Reindirizza al login solo se siamo nel browser
+    if (this.storageService.isAvailable) {
+      this.router.navigate(['/login']);
+    }
+    
+    console.log('User logged out successfully');
+  }
+
   refreshToken(): Observable<{ accessToken: string }> {
     const refreshToken = this.getRefreshToken();
     if (!refreshToken) {
-      console.error('No refresh token available');
+      console.error('No refresh token available for refresh');
+      // Non fare logout qui per evitare loop, lascia che l'interceptor gestisca
       return throwError(() => new Error('No refresh token available'));
     }
 
@@ -127,7 +149,6 @@ export class AuthService {
     };
     
     console.log('Request body:', requestBody);
-    console.log('Request headers:', requestHeaders);
     
     return this.http.post<{ accessToken: string }>(refreshUrl, requestBody, {
       headers: requestHeaders
@@ -156,27 +177,16 @@ export class AuthService {
         console.error('Error status:', error.status);
         console.error('Error details:', error.error);
         
-        // Clear tokens on refresh failure
-        this.storageService.removeItem(this.TOKEN_KEY);
-        this.storageService.removeItem(this.REFRESH_TOKEN_KEY);
+        // Pulisci i token solo se il refresh è fallito definitivamente
+        if (error.status === 401 || error.status === 403) {
+          console.log('Refresh token is invalid, clearing all tokens');
+          this.storageService.removeItem(this.TOKEN_KEY);
+          this.storageService.removeItem(this.REFRESH_TOKEN_KEY);
+        }
+        
         return throwError(() => error);
       })
     );
-  }
-
-  logout(): void {
-    // Clear storage
-    this.storageService.removeItem(this.TOKEN_KEY);
-    this.storageService.removeItem(this.REFRESH_TOKEN_KEY);
-    this.storageService.removeItem(this.USER_KEY);
-    
-    // Reset signals
-    this._isAuthenticated.set(false);
-    this._currentUser.set(null);
-    this._isLoading.set(false);
-    
-    // Navigate to login
-    this.router.navigate(['/login']);
   }
 
   getAccessToken(): string | null {

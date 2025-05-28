@@ -1,4 +1,4 @@
-import { Component, computed, OnInit, effect } from '@angular/core';
+import { Component, computed, OnInit, effect, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { TableComponent } from './table.component';
 import { DataService } from '../services/data.service';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
@@ -14,7 +14,8 @@ import {
   CustomerSearchType,
   DataType,
 } from '../models/constants';
-import { debounceTime } from 'rxjs/operators';
+import { debounceTime, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDatepickerModule } from '@angular/material/datepicker';
 import { InputComponent } from './input.component';
@@ -47,6 +48,7 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
 @Component({
   selector: 'app-appointment-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     TableComponent,
     MatProgressSpinnerModule,
@@ -67,7 +69,7 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
     { provide: MAT_DATE_FORMATS, useValue: CUSTOM_NATIVE_DATE_FORMATS },
   ],
   template: `
-    @defer (when righe.length > 0;) {
+    @defer (when righeComputed().length > 0;) {
     <div [style.opacity]="opacity">
       <div class="title">Lista Appuntamenti</div>
 
@@ -117,10 +119,11 @@ const CUSTOM_NATIVE_DATE_FORMATS = {
       <app-table
         [icons]="['delete', 'info']"
         [colonne]="colonne"
-        [righe]="righe"
+        [righe]="righeComputed()"
         (info)="infoAppointment($event)"
         (delete)="delete($event)"
         (orderBy)="orderBy($event)"
+        [trackByFn]="trackByAppointmentId"
       >
         <app-pagination
           [currentPage]="appointmentPagination().currentPage"
@@ -203,14 +206,41 @@ error-message {
 }
   `,
 })
-export class AppointmentListComponent implements OnInit {
+export class AppointmentListComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  
   customers = computed(() => this.dataService.customers());
   appointment = computed(() => this.dataService.appointment());
   appointments = computed(() => this.dataService.appointments());
   appointmentPagination = computed(() =>
     this.dataService.appointmentPagination()
   );
-  colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefono'];
+  
+  // Computed per le righe ottimizzato
+  righeComputed = computed(() => {
+    const appointments = this.appointments();
+    if (!appointments || !Array.isArray(appointments) || appointments.length === 0) {
+      return [];
+    }
+
+    return appointments.map((appointment) => ({
+      id: appointment.id,
+      customerName: `${appointment.customer?.name || ''} ${appointment.customer?.surname || ''}`.trim(),
+      date: new Date(appointment.date).toLocaleDateString('it-IT', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }),
+      time: new Date(appointment.date).toLocaleTimeString('it-IT', {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      duration: appointment.duration + ' min',
+      phoneNumber: appointment.customer?.phoneNumber || '',
+    }));
+  });
+
+  colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefone'];
   nameInput = new FormControl('');
   showAppointmentDetail = false;
   showCustomerDetail = false;
@@ -223,11 +253,15 @@ export class AppointmentListComponent implements OnInit {
   range: FormGroup<any>;
   pagSize = 5;
 
+  // TrackBy function per ottimizzare le liste
+  trackByAppointmentId = (index: number, item: any) => item.id;
+
   constructor(private dataService: DataService, private fb: FormBuilder) {
     this.range = this.fb.group({
       start: new FormControl(),
       end: new FormControl(),
     });
+    
     effect(() => {
       const a = this.dataService.appointment();
       if (
@@ -253,12 +287,24 @@ export class AppointmentListComponent implements OnInit {
       }
     });
   }
+
   ngOnInit(): void {
     this.initialData();
-    this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
-      // Quando cambia il nome, ricarica con tutti i filtri attivi
-      this.initialData(this.getSearchEndpoint());
-    });
+    
+    // Debounce aumentato a 1000ms per ridurre le chiamate
+    this.nameInput.valueChanges
+      .pipe(
+        debounceTime(1000),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((value) => {
+        this.initialData(this.getSearchEndpoint());
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   initialData(value: string = '') {
@@ -284,31 +330,8 @@ export class AppointmentListComponent implements OnInit {
   }
 
   get righe(): TableAppointment[] {
-    const searchValue = this.nameInput.value?.trim();
-
-    if (
-      !this.appointments() ||
-      !Array.isArray(this.appointments()) ||
-      this.appointments().length === 0
-    )
-      return [];
-
-    return this.appointments().map((appointment) => ({
-      id: appointment.id,
-      customerName:
-        appointment.customer?.name + ' ' + appointment.customer?.surname!,
-      date: new Date(appointment.date).toLocaleDateString('it-IT', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-      }),
-      time: new Date(appointment.date).toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      duration: appointment.duration + ' min',
-      phoneNumber: appointment.customer?.phoneNumber,
-    }));
+    // Deprecato - usa righeComputed() invece
+    return this.righeComputed();
   }
 
   formInsertAppointment() {

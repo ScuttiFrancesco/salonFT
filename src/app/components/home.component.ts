@@ -1,13 +1,16 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { AuthService } from '../services/auth.service';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-home',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [CommonModule, RouterModule, MatIconModule, MatButtonModule],
   template: `
     <div class="home-container">
@@ -34,15 +37,15 @@ import { AuthService } from '../services/auth.service';
             <div class="welcome-message">
               <h2>Bentornato, {{ authService.currentUser()?.name }}!</h2>
               @if (authService.isAdmin()) {
-                <p>Accedi alle funzioni di amministrazione:</p>
+                <p>Accedi alle funzioni di amministratore:</p>
                 <div class="admin-links">
                   <a routerLink="/admin/customers" mat-raised-button>Gestione Clienti</a>
                   <a routerLink="/admin/appointments" mat-raised-button>Gestione Appuntamenti</a>
+                  <a routerLink="/admin/calendar" mat-raised-button>Calendario</a>
                 </div>
               } @else {
-                <p>Gestisci i tuoi appuntamenti:</p>
+                <p>Prendi visione degli appuntamenti:</p>
                 <div class="user-links">
-                  <a routerLink="/user/appointments" mat-raised-button>I Miei Appuntamenti</a>
                   <a routerLink="/user/calendar" mat-raised-button>Calendario</a>
                 </div>
               }
@@ -98,7 +101,7 @@ import { AuthService } from '../services/auth.service';
     }
 
     .hero-icon {
-      font-size: 3.5rem !important;
+      font-size: 1.65rem !important;
     }
 
     .hero-subtitle {
@@ -223,6 +226,36 @@ import { AuthService } from '../services/auth.service';
     }
   `
 })
-export class HomeComponent {
+export class HomeComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+
   constructor(public authService: AuthService) {}
+
+  ngOnInit(): void {
+    // Verifica lo stato di autenticazione all'avvio
+    if (this.authService.isAuthenticated()) {
+      // Verifica che i token siano ancora validi
+      const token = this.authService.getAccessToken();
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split('.')[1]));
+          const currentTime = Math.floor(Date.now() / 1000);
+          const timeUntilExpiry = payload.exp - currentTime;
+          
+          if (timeUntilExpiry <= 0) {
+            console.log('Token expired on home page, logging out');
+            this.authService.logout();
+          }
+        } catch (error) {
+          console.error('Invalid token on home page, logging out');
+          this.authService.logout();
+        }
+      }
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 }

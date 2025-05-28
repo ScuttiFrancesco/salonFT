@@ -1,4 +1,6 @@
-import { Component, computed, OnInit, effect } from '@angular/core';
+import { Component, computed, OnInit, effect, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { Subject } from 'rxjs';
+import { takeUntil, debounceTime } from 'rxjs/operators';
 import { TableComponent } from './table.component';
 import { DataService } from '../services/data.service';
 import { log } from 'console';
@@ -13,7 +15,6 @@ import {
   CustomerSearchType,
   DataType,
 } from '../models/constants';
-import { debounceTime } from 'rxjs/operators';
 import { MatIcon, MatIconModule } from '@angular/material/icon';
 import { InputComponent } from './input.component';
 import { CustomerDetailComponent } from './customer-detail.component';
@@ -26,6 +27,7 @@ import { PaginationComponent } from './pagination.component';
 @Component({
   selector: 'app-customer-list',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
     TableComponent,
     MatProgressSpinnerModule,
@@ -38,7 +40,7 @@ import { PaginationComponent } from './pagination.component';
     PaginationComponent,
   ],
   template: `
-    @defer (when righe.length > 0;) {
+    @defer (when righeComputed().length > 0;) {
     <div [style.opacity]="opacity">
       <div class="title">Lista Clienti</div>
       <div class="search-container">
@@ -51,7 +53,8 @@ import { PaginationComponent } from './pagination.component';
       <app-table 
         [icons]="['delete', 'info']" 
         [colonne]="colonne" 
-        [righe]="righe"
+        [righe]="righeComputed()"
+        [trackByFn]="trackByCustomerId"
         (orderBy)="orderBy($event)"
         (info)="infoCustomer($event)" 
         (delete)="delete($event)">
@@ -126,10 +129,29 @@ error-message {
 }
   `,
 })
-export class CustomerListComponent implements OnInit {
+export class CustomerListComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  
   customers = computed(() => this.dataService.customers());
   customer = computed(() => this.dataService.customer());
   customerPagination = computed(() => this.dataService.customerPagination());
+  
+  // Computed ottimizzato per le righe
+  righeComputed = computed(() => {
+    const customers = this.customers();
+    if (!customers || !Array.isArray(customers) || customers.length === 0) {
+      return [];
+    }
+    
+    return customers.map((customer) => ({
+      id: customer.id,
+      name: customer.name,
+      surname: customer.surname,
+      email: customer.email,
+      phoneNumber: customer.phoneNumber,
+    }));
+  });
+
   colonne: string[] = ['Id', 'Nome', 'Cognome', 'Email', 'Telefono'];
   nameInput = new FormControl('');
   emailInput = new FormControl('');
@@ -141,6 +163,9 @@ export class CustomerListComponent implements OnInit {
   opacity = 1;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
   pagSize = 5;
+
+  // TrackBy function per ottimizzare le liste
+  trackByCustomerId = (index: number, item: any) => item.id;
 
   constructor(private dataService: DataService, private http: HttpClient) {
     effect(() => {
@@ -155,27 +180,50 @@ export class CustomerListComponent implements OnInit {
   ngOnInit(): void {
     this.initialData();
 
-    this.nameInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
-      if (value) {
-        this.emailInput.setValue('', { emitEvent: false });
-        this.phoneInput.setValue('', { emitEvent: false });
-      }
-      this.initialData('searchByName=' + value);
-    });
-    this.emailInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
-      if (value) {
-        this.nameInput.setValue('', { emitEvent: false });
-        this.phoneInput.setValue('', { emitEvent: false });
-      }
-      this.initialData('searchByEmail=' + value);
-    });
-    this.phoneInput.valueChanges.pipe(debounceTime(500)).subscribe((value) => {
-      if (value) {
-        this.nameInput.setValue('', { emitEvent: false });
-        this.emailInput.setValue('', { emitEvent: false });
-      }
-      this.initialData('searchByPhoneNumber=' + value);
-    });
+    // Debounce aumentato e gestione subscription
+    this.nameInput.valueChanges
+      .pipe(
+        debounceTime(1000),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((value) => {
+        if (value) {
+          this.emailInput.setValue('', { emitEvent: false });
+          this.phoneInput.setValue('', { emitEvent: false });
+        }
+        this.initialData('searchByName=' + value);
+      });
+
+    this.emailInput.valueChanges
+      .pipe(
+        debounceTime(1000),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((value) => {
+        if (value) {
+          this.nameInput.setValue('', { emitEvent: false });
+          this.phoneInput.setValue('', { emitEvent: false });
+        }
+        this.initialData('searchByEmail=' + value);
+      });
+
+    this.phoneInput.valueChanges
+      .pipe(
+        debounceTime(1000),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((value) => {
+        if (value) {
+          this.nameInput.setValue('', { emitEvent: false });
+          this.emailInput.setValue('', { emitEvent: false });
+        }
+        this.initialData('searchByPhoneNumber=' + value);
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   initialData(value: string = '') {
@@ -201,24 +249,8 @@ export class CustomerListComponent implements OnInit {
   }
 
   get righe(): TableCustomer[] {
-    const searchValue =
-      this.nameInput.value?.trim() ||
-      this.emailInput.value?.trim() ||
-      this.phoneInput.value?.trim();
-
-    if (
-      !this.customers() ||
-      !Array.isArray(this.customers()) ||
-      this.customers().length === 0
-    )
-      return [];
-    return this.customers().map((customer) => ({
-      id: customer.id,
-      name: customer.name,
-      surname: customer.surname,
-      email: customer.email,
-      phoneNumber: customer.phoneNumber,
-    }));
+    // Deprecato - usa righeComputed() invece
+    return this.righeComputed();
   }
 
   infoCustomer(idCustomer: number) {

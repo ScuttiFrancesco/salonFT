@@ -1,4 +1,4 @@
-import { Component, input, output } from '@angular/core';
+import { Component, input, output, ChangeDetectionStrategy } from '@angular/core';
 
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -7,6 +7,7 @@ import { FormsModule } from '@angular/forms';
 @Component({
   selector: 'app-table',
   standalone: true,
+  changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [MatButtonModule, MatIconModule, FormsModule],
   template: `
     <div class="table-container">
@@ -23,7 +24,7 @@ import { FormsModule } from '@angular/forms';
        </tr>
      </thead>
      <tbody>
-       @for(riga of righe(); track $index){
+       @for(riga of righe(); track trackByFn() ? trackByFn()!($index, riga) : $index){
        <tr>
          @for(cella of getCellValues(riga); track $index){
          <td>
@@ -42,8 +43,6 @@ import { FormsModule } from '@angular/forms';
      </tbody>
    </table>
    <ng-content></ng-content>
-
-
  </div>
   `,
   styles: `
@@ -136,16 +135,14 @@ import { FormsModule } from '@angular/forms';
 export class TableComponent {
   colonne = input.required<string[]>();
   righe = input.required<any>();
+  trackByFn = input<(index: number, item: any) => any>();
   info = output<any>();
   delete = output<any>();
   more_vert = output<any>();
   icons = input<string[]>(['delete', 'info', 'more_vert']);
-    orderBy = output<string>();
- 
+  orderBy = output<string>();
 
   getCellValues(row: any): any[] {
     return Array.isArray(row) ? row : Object.values(row);
   }
-
-  
 }

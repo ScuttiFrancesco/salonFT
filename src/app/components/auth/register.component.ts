@@ -138,7 +138,7 @@ import { InputComponent } from '../input.component';
       gap: 10px;
       
       mat-icon {
-        font-size: 2.5rem;
+        font-size: 1.65rem;
         color: brown;
       }
       

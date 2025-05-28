@@ -2,7 +2,6 @@ import { Injectable, signal } from '@angular/core';
 import { Customer } from '../models/customer';
 import { HttpClient } from '@angular/common/http';
 import { API_URL, DataType } from '../models/constants';
-import { log } from 'console';
 import { Appointment, TableAppointment } from '../models/appointment';
 import { map } from 'rxjs';
 import { PaginationInfo } from '../models/paginationInfo';
@@ -24,6 +23,16 @@ export class DataService {
   pagSize = 10;
 
   constructor(private http: HttpClient) {}
+
+  // Metodo semplificato per ottenere customers (per autocomplete)
+  getCustomersForAutocomplete() {
+    return this.http.get<Customer[]>(`${API_URL}/customer/retrieveAll`).pipe(
+      map(customers => {
+        this.customers.set(customers);
+        return customers;
+      })
+    );
+  }
 
   getAllDataPaginated(
     endpoint: string,
@@ -67,18 +76,21 @@ export class DataService {
                     ]);
                   },
                   error: (error) => {
-                    this.messaggioErrore.set(error.error.message);
-                    console.error(
-                      'Error fetching customer for appointment:',
-                      error
-                    );
+                    this.handleError(error, 'Error fetching customer for appointment');
                   },
                 });
             });           
           }
         })
       )
-      .subscribe();
+      .subscribe({
+        next: () => {
+          // Success handled in map
+        },
+        error: (error) => {
+          this.handleError(error, 'Error in getAllDataPaginated');
+        }
+      });
   }
 
   getAllData(type: string, searchTerm: string = 'retrieveAll') {
@@ -86,7 +98,6 @@ export class DataService {
       next: (response) => {
         if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
           this.customers.set(response);
-
           console.log('Customers fetched successfully:', this.customers());
         }
         if (type === DataType[DataType.APPOINTMENT].toLowerCase()) {
@@ -112,11 +123,7 @@ export class DataService {
                   ]);
                 },
                 error: (error) => {
-                  this.messaggioErrore.set(error.error.message);
-                  console.error(
-                    'Error fetching customer for appointment:',
-                    error
-                  );
+                  this.handleError(error, 'Error fetching customer for appointment');
                 },
               });
           });
@@ -127,8 +134,7 @@ export class DataService {
         }
       },
       error: (error) => {
-        this.messaggioErrore.set(error.error.message);
-        console.error('Error fetching customers:', error);
+        this.handleError(error, 'Error fetching data');
       },
     });
   }
@@ -138,7 +144,7 @@ export class DataService {
       next: (response) => {
         if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
           this.customer.set(response);
-          console.log('Customers fetched successfully:', this.customer());
+          console.log('Customer fetched successfully:', this.customer());
         }
         if (type === DataType[DataType.APPOINTMENT].toLowerCase()) {
           this.http
@@ -156,20 +162,15 @@ export class DataService {
                 this.appointment.set(tableAppointment);
               },
               error: (error) => {
-                this.messaggioErrore.set(error.error.message);
-                console.error(
-                  'Error fetching customer for appointment:',
-                  error
-                );
+                this.handleError(error, 'Error fetching customer for appointment');
               },
             });
         }
 
-        console.log('Appointment caricato successfully:', this.appointment());
+        console.log('Data loaded successfully');
       },
       error: (error) => {
-        this.messaggioErrore.set(error.error.message);
-        console.error('Error fetching customers:', error);
+        this.handleError(error, 'Error fetching data by ID');
       },
     });
   }
@@ -206,11 +207,7 @@ export class DataService {
                 );
               },
               error: (error) => {
-                this.messaggioErrore.set(error.error.message);
-                console.error(
-                  'Error fetching customer for appointment:',
-                  error
-                );
+                this.handleError(error, 'Error fetching customer for updated appointment');
               },
             });
 
@@ -219,8 +216,7 @@ export class DataService {
         }
       },
       error: (error) => {
-        this.messaggioErrore.set(error.error.message);
-        console.error('Error updating customer:', error);
+        this.handleError(error, 'Error updating data');
       },
     });
   }
@@ -253,11 +249,7 @@ export class DataService {
                 ]);
               },
               error: (error) => {
-                this.messaggioErrore.set(error.error.message);
-                console.error(
-                  'Error fetching customer for appointment:',
-                  error
-                );
+                this.handleError(error, 'Error fetching customer for new appointment');
               },
             });
 
@@ -266,8 +258,7 @@ export class DataService {
         }
       },
       error: (error) => {
-        this.messaggioErrore.set(error.error.message);
-        console.error('Error inserting customer:', error.error.message);
+        this.handleError(error, 'Error inserting data');
       },
     });
   }
@@ -291,9 +282,52 @@ export class DataService {
         }
       },
       error: (error) => {
-        this.messaggioErrore.set(error.error.message);
-        console.error('Error deleting customer:', error);
+        this.handleError(error, 'Error deleting data');
       },
     });
   }
+
+  // Metodo centralizzato per la gestione degli errori
+  public handleError(error: any, context: string): void {
+    console.error(`${context}:`, error);
+    
+    let errorMessage = 'Si è verificato un errore';
+    
+    try {
+      // Gestione robusta dei diversi formati di errore
+      if (error?.error?.message) {
+        errorMessage = error.error.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error?.error === 'string') {
+        errorMessage = error.error;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.status) {
+        switch (error.status) {
+          case 401:
+            errorMessage = 'Non autorizzato';
+            break;
+          case 403:
+            errorMessage = 'Accesso negato';
+            break;
+          case 404:
+            errorMessage = 'Risorsa non trovata';
+            break;
+          case 500:
+            errorMessage = 'Errore interno del server';
+            break;
+          default:
+            errorMessage = `Errore HTTP ${error.status}`;
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing error message:', e);
+      errorMessage = 'Si è verificato un errore imprevisto';
+    }
+    
+    this.messaggioErrore.set(errorMessage);
+    console.error('Processed error message:', errorMessage);
+  }
 }
+

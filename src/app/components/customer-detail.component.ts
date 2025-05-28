@@ -11,6 +11,7 @@ import {
   Validators,
 } from '@angular/forms';
 import { first } from 'rxjs';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-customer-detail',
@@ -110,8 +111,9 @@ import { first } from 'rxjs';
         }
         <div class="buttons-container">
           <button class="close-button" type="button" (click)="close.emit()">
-            Annulla
+            Chiudi
           </button>
+          @if (authService.isAdmin() ) {
           <button
             type="button"
             (click)="updateCustomer()"
@@ -124,7 +126,7 @@ import { first } from 'rxjs';
             <button class="delete-button" type="button" (click)="delete.emit(customer().id)">
             Elimina
           </button>
-          }
+          }}
         </div>
       </form>
     </div>
@@ -223,7 +225,7 @@ export class CustomerDetailComponent {
 
   customerForm: FormGroup;
 
-  constructor(private fb: FormBuilder) {
+  constructor(private fb: FormBuilder, public authService: AuthService) {
     this.customerForm = this.fb.group({
       name: this.nameControl,
       surname: this.surnameControl,

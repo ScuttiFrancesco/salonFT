@@ -27,7 +27,7 @@ import { AuthService } from '../services/auth.service';
             <a routerLink="/admin/appointments" routerLinkActive="active">Appuntamenti</a>
             <a routerLink="/admin/calendar" routerLinkActive="active">Calendario</a>
           } @else {
-            <a routerLink="/user/appointments" routerLinkActive="active">I Miei Appuntamenti</a>
+            
             <a routerLink="/user/calendar" routerLinkActive="active">Calendario</a>
           }
           
@@ -71,7 +71,7 @@ import { AuthService } from '../services/auth.service';
     }
 
     .brand-icon {
-      font-size: 2rem;
+      font-size: 1.5rem;
     }
 
     .nav-links {
