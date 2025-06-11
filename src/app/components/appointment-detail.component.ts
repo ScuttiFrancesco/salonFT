@@ -121,7 +121,7 @@ import { AuthService } from '../services/auth.service';
             [placeholder]="'Ora'"
             [type]="'time'"
             formControlName="time"
-            [messaggio]="dateControl.invalid && dateControl.touched ? 'Campo obbligatorio' : ''"
+            [messaggio]="timeControl.invalid && timeControl.touched ? 'Campo obbligatorio' : ''"
           />
           @if (timeControl.hasError('timeOutOfRange') && timeControl.touched) {
             <div class="validation-error">Orario consentito: {{ timeControl.getError('timeOutOfRange').allowed }}</div>
@@ -139,7 +139,7 @@ import { AuthService } from '../services/auth.service';
             [placeholder]="'Durata (minuti)'"
             [type]="'number'"
             formControlName="duration"
-            [messaggio]="dateControl.invalid && dateControl.touched ? 'Campo obbligatorio' : ''"
+            [messaggio]="durationControl.invalid && durationControl.touched ? 'Campo obbligatorio' : ''"
           />
         </div>
 
@@ -170,6 +170,9 @@ import { AuthService } from '../services/auth.service';
             </div>
             }
           </div>
+          @if (servicesControl.hasError('servicesRequired') && servicesControl.touched) {
+            <div class="validation-error">Almeno un servizio deve essere selezionato</div>
+          }
         </div>
 
         <div class="buttons-container">
@@ -180,14 +183,8 @@ import { AuthService } from '../services/auth.service';
           <button
             type="button"
             (click)="saveAppointment()"
-            [disabled]="
-              appointmentForm.invalid || selectedServices.length === 0
-            "
-            [class]="
-              appointmentForm.invalid || selectedServices.length === 0
-                ? 'disabled'
-                : 'update-button'
-            "
+            [disabled]="appointmentForm.invalid"
+            [class]="appointmentForm.invalid ? 'disabled' : 'update-button'"
           >
             @if(appointment().id > 0){ Salva Modifiche}@else { Inserisci
             Appuntamento }
@@ -196,6 +193,7 @@ import { AuthService } from '../services/auth.service';
              <button class="delete-button" type="button" (click)="delete.emit(appointment().id)">
             Elimina
           </button>
+          <button class="receipt-button" (click)="addReceipt.emit(appointment())">Ricevuta</button>
           }}
         </div>
       </form>
@@ -215,6 +213,7 @@ import { AuthService } from '../services/auth.service';
         background-color: rgb(0, 145, 29);
         border-radius: 50px;
         padding: 5px;
+        margin-left: 5px;
       }
 
     .disabled {
@@ -407,7 +406,8 @@ export class AppointmentDetailComponent {
   appointment = input.required<TableAppointment>();
   close = output<void>();
   update = output<Appointment>();
-  delete= output<number>();
+  delete = output<number>();
+  addReceipt = output<TableAppointment>();
   customer = {} as Customer;
   // Form controls
   customerSearch = new FormControl('');
@@ -419,6 +419,7 @@ export class AppointmentDetailComponent {
     Validators.min(30),
   ]);
   notesControl = new FormControl('');
+  servicesControl = new FormControl<string[]>([], [this.servicesValidator()]); // Aggiungi controllo per i servizi
 
   appointmentForm: FormGroup;
   showCustomerDetail: boolean = false;
@@ -444,6 +445,7 @@ export class AppointmentDetailComponent {
   selectedServices: string[] = [];
 
 
+
   constructor(private fb: FormBuilder, private dataService: DataService, public authService: AuthService) {
     this.appointmentForm = this.fb.group({
       customerSearch: this.customerSearch,
@@ -452,6 +454,7 @@ export class AppointmentDetailComponent {
       time: this.timeControl,
       duration: this.durationControl,
       notes: this.notesControl,
+      services: this.servicesControl, // Aggiungi al form group
     });
 
     // Monitora i cambiamenti nella lista clienti con effect
@@ -587,13 +590,21 @@ export class AppointmentDetailComponent {
     // Aggiorna i servizi selezionati
     if (a.services && Array.isArray(a.services)) {
       this.selectedServices = [...a.services];
+      this.servicesControl.setValue([...a.services]); // Aggiorna anche il form control
     } else {
       this.selectedServices = [];
+      this.servicesControl.setValue([]); // Reset del form control
     }
   }
 
   saveAppointment() {
-    if (this.appointmentForm.invalid || this.selectedServices.length === 0) {
+    // Assicurati che il form control sia aggiornato prima della validazione
+    this.servicesControl.setValue([...this.selectedServices]);
+    this.servicesControl.markAsTouched();
+    
+    if (this.appointmentForm.invalid) {
+      console.log('Form is invalid:', this.appointmentForm.errors);
+      console.log('Services control errors:', this.servicesControl.errors);
       return;
     }
 
@@ -692,6 +703,10 @@ export class AppointmentDetailComponent {
     } else {
       this.selectedServices.push(service);
     }
+    
+    // Aggiorna il form control quando cambia la selezione
+    this.servicesControl.setValue([...this.selectedServices]);
+    this.servicesControl.markAsTouched();
   }
 
   isServiceSelected(service: string): boolean {
@@ -730,6 +745,19 @@ export class AppointmentDetailComponent {
         };
       }
 
+      return null;
+    };
+  }
+
+  // Validator personalizzato per i servizi
+  servicesValidator(): ValidatorFn {
+    return (control: AbstractControl): { [key: string]: any } | null => {
+      const services = control.value;
+      
+      if (!services || !Array.isArray(services) || services.length === 0) {
+        return { servicesRequired: { message: 'Almeno un servizio deve essere selezionato' } };
+      }
+      
       return null;
     };
   }

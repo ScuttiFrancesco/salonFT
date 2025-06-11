@@ -47,6 +47,13 @@ export const routes: Routes = [
     path: 'admin',
     children: [
       {
+        path: 'receipts',
+        loadComponent: () =>
+          import('./components/receipt-list.component').then(
+            (m) => m.ReceiptListComponent
+          ),
+      },
+      {
         path: 'customers',
         loadComponent: () =>
           import('./components/customer-list.component').then(

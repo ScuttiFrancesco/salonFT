@@ -1,4 +1,4 @@
-import { Component, computed, OnInit, effect, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { Component, computed, OnInit, effect, ChangeDetectionStrategy, OnDestroy, signal } from '@angular/core';
 import { Subject } from 'rxjs';
 import { takeUntil, debounceTime } from 'rxjs/operators';
 import { TableComponent } from './table.component';
@@ -23,6 +23,7 @@ import { ViewChild } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import e from 'express';
 import { PaginationComponent } from './pagination.component';
+import { AuthService } from '../services/auth.service';
 
 @Component({
   selector: 'app-customer-list',
@@ -80,9 +81,9 @@ import { PaginationComponent } from './pagination.component';
  } @if (showCustomerDetail) {
  <app-customer-detail [customer]="customer()" (close)="showCustomerDetail = false; opacity = 1"
    (update)="updateCustomer($event)" (delete)="delete($event)" />
- } @if(showAlertModal){
+ } @if(showAlertModal()){
  <app-alert-modal [title]="'Elimina Cliente'" [confirmation]="true" (confirm)="confirmDeleting($event)"
-   [message]="message" />
+   [message]="message()" />
 
  }
   `,
@@ -157,8 +158,8 @@ export class CustomerListComponent implements OnInit, OnDestroy {
   emailInput = new FormControl('');
   phoneInput = new FormControl('');
   showCustomerDetail = false;
-  showAlertModal = false;
-  message: string = '';
+  showAlertModal = signal(false); // Changed to signal
+    message = signal(''); 
   deletingCustomerId: number | null = null;
   opacity = 1;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
@@ -167,17 +168,25 @@ export class CustomerListComponent implements OnInit, OnDestroy {
   // TrackBy function per ottimizzare le liste
   trackByCustomerId = (index: number, item: any) => item.id;
 
-  constructor(private dataService: DataService, private http: HttpClient) {
+  constructor(private dataService: DataService, private http: HttpClient, private authService: AuthService) {
     effect(() => {
       const c = this.dataService.customer();
       if (this.deletingCustomerId != null && c.id === this.deletingCustomerId) {
-        this.message = `Sei sicuro di voler eliminare il cliente ${c.name} ${c.surname}?`;
-        this.showAlertModal = true;
+        this.message.set( `Sei sicuro di voler eliminare il cliente ${c.name} ${c.surname}?`);
+        this.showAlertModal.set(true);
         this.deletingCustomerId = null;
       }
-    });
+    },
+      { allowSignalWrites: true }
+    ); 
   }
   ngOnInit(): void {
+    // Verifica autenticazione prima di caricare i dati
+    if (!this.authService.isAuthenticated()) {
+      console.log('User not authenticated, skipping data load');
+      return;
+    }
+
     this.initialData();
 
     // Debounce aumentato e gestione subscription
@@ -187,6 +196,8 @@ export class CustomerListComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((value) => {
+        if (!this.authService.isAuthenticated()) return;
+        
         if (value) {
           this.emailInput.setValue('', { emitEvent: false });
           this.phoneInput.setValue('', { emitEvent: false });
@@ -200,6 +211,8 @@ export class CustomerListComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((value) => {
+        if (!this.authService.isAuthenticated()) return;
+        
         if (value) {
           this.nameInput.setValue('', { emitEvent: false });
           this.phoneInput.setValue('', { emitEvent: false });
@@ -213,6 +226,8 @@ export class CustomerListComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((value) => {
+        if (!this.authService.isAuthenticated()) return;
+        
         if (value) {
           this.nameInput.setValue('', { emitEvent: false });
           this.emailInput.setValue('', { emitEvent: false });
@@ -227,6 +242,12 @@ export class CustomerListComponent implements OnInit, OnDestroy {
   }
 
   initialData(value: string = '') {
+    // Controllo autenticazione prima di ogni chiamata
+    if (!this.authService.isAuthenticated()) {
+      console.log('User not authenticated, cannot load data');
+      return;
+    }
+
     if (value !== '') {
       this.dataService.getAllDataPaginated(
         value,
@@ -302,7 +323,7 @@ export class CustomerListComponent implements OnInit, OnDestroy {
         this.customer().id
       );
     }
-    this.showAlertModal = false;
+    this.showAlertModal.set(false);
     this.showCustomerDetail = false;
     this.opacity = 1;
   }
@@ -346,8 +367,12 @@ export class CustomerListComponent implements OnInit, OnDestroy {
     );
   }
 
-  orderBy(col: string) {
+  
+
+   orderBy(col: string) {
     let colIndex: number = 0;
+    let endpoint = this.getSearchEndpoint();
+
     switch (col) {
       case 'Id':
         colIndex = 0;
@@ -359,15 +384,22 @@ export class CustomerListComponent implements OnInit, OnDestroy {
         colIndex = 2;
         break;
     }
+
+    // Ottieni la direzione corrente e invertila
+    const currentDirection = this.customerPagination().sortDirection;
+    const newDirection =
+      currentDirection === CustomerSearchDirection.ASC
+        ? CustomerSearchDirection.DESC
+        : CustomerSearchDirection.ASC;
+
+    
     this.dataService.getAllDataPaginated(
-      'retrieveAll/paginated',
+      endpoint,
       DataType.CUSTOMER,
       1,
       this.pagSize,
       colIndex,
-      this.customerPagination().sortDirection === CustomerSearchDirection.ASC
-        ? CustomerSearchDirection.DESC
-        : CustomerSearchDirection.ASC
+      newDirection
     );
   }
 

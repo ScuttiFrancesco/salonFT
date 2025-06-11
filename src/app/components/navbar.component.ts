@@ -14,7 +14,7 @@ import { AuthService } from '../services/auth.service';
     <nav class="navbar">
       <div class="nav-brand">
         <mat-icon class="brand-icon">content_cut</mat-icon>
-        <span class="brand-text" routerLink="/home" style="cursor: pointer;">SalonFT</span>
+        <span class="brand-text" routerLink="/home" style="cursor: pointer;">Il tuo Salone</span>
       </div>
       
       <div class="nav-links">
@@ -25,6 +25,7 @@ import { AuthService } from '../services/auth.service';
           @if (authService.isAdmin()) {
             <a routerLink="/admin/customers" routerLinkActive="active">Clienti</a>
             <a routerLink="/admin/appointments" routerLinkActive="active">Appuntamenti</a>
+            <a routerLink="/admin/receipts" routerLinkActive="active">Ricevute</a>
             <a routerLink="/admin/calendar" routerLinkActive="active">Calendario</a>
           } @else {
             

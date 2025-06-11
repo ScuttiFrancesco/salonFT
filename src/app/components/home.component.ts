@@ -18,7 +18,7 @@ import { takeUntil } from 'rxjs/operators';
         <div class="hero-content">
           <h1>
             <mat-icon class="hero-icon">content_cut</mat-icon>
-            Benvenuto in SalonFT
+            Benvenuto nel tuo salone di bellezza
           </h1>
           <p class="hero-subtitle">
             La piattaforma completa per la gestione del tuo salone di bellezza

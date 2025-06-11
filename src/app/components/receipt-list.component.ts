@@ -5,7 +5,7 @@ import {
   effect,
   ChangeDetectionStrategy,
   OnDestroy,
-  signal,
+  signal, // Import signal
 } from '@angular/core';
 import { TableComponent } from './table.component';
 import { DataService } from '../services/data.service';
@@ -41,12 +41,13 @@ import { Appointment, TableAppointment } from '../models/appointment';
 import { PaginationComponent } from './pagination.component';
 import { ReceiptComponent } from './receipt.component';
 import { Receipt } from '../models/receipt';
+import { app } from '../../../server';
 import { AuthService } from '../services/auth.service';
 
-
+// Formato date personalizzato per NativeDateAdapter
 
 @Component({
-  selector: 'app-appointment-list',
+  selector: 'app-receipt-list',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
   imports: [
@@ -72,7 +73,7 @@ import { AuthService } from '../services/auth.service';
   template: `
     @defer (when righeComputed().length > 0;) {
     <div [style.opacity]="opacity">
-      <div class="title">Lista Appuntamenti</div>
+      <div class="title">Lista Ricevute</div>
 
       <div class="search-container">
         <app-input
@@ -111,21 +112,21 @@ import { AuthService } from '../services/auth.service';
           }
           <mat-date-range-picker #picker />
         </mat-form-field>
-
-        <mat-icon class="add" (click)="formInsertAppointment()">add</mat-icon>
       </div>
       <app-table
         [icons]="['delete', 'info']"
         [colonne]="colonne"
         [righe]="righeComputed()"
-        (info)="infoAppointment($event)"
+        (info)="infoReceipt($event)"
         (delete)="delete($event)"
         (orderBy)="orderBy($event)"
         [trackByFn]="trackByAppointmentId"
+        [visibleColumns]="['Id', 'Cliente', 'Giorno', 'Totale', 'Id-App.']"
+        (infoApp)="infoApp($event)"
       >
         <app-pagination
-          [currentPage]="appointmentPagination().currentPage"
-          [totalPages]="appointmentPagination().totalPages"
+          [currentPage]="receiptPagination().currentPage"
+          [totalPages]="receiptPagination().totalPages"
           [currentPageSize]="pagSize"
           (nextPage)="nextPage()"
           (prevPage)="prevPage()"
@@ -144,27 +145,28 @@ import { AuthService } from '../services/auth.service';
       ></mat-progress-spinner>
       <div class="loading">Caricamento...</div>
     </div>
-    } @if (showAppointmentDetail) {
-    <app-appointment-detail
-      [appointment]="appointment()"
-      (close)="showAppointmentDetail = false; opacity = 1"
-      (update)="updateAppointment($event)"
-      (delete)="delete($event)"
-      (addReceipt)="formReceipt($event)"
-    />
     } @if(showAlertModal()){
+    <!-- Read signal -->
     <app-alert-modal
-      [title]="'Elimina Appuntamento'"
+      [title]="'Elimina Ricevuta'"
       [confirmation]="true"
       (confirm)="confirmDeleting($event)"
       [message]="message()"
     />
     } @if (showReceipt) {
     <app-receipt
-      [receipt]="receipt!"
+      [receipt]="receipt()"
       (close)="showReceipt = false; opacity = 1"
       (delete)="delete($event)"
       (update)="saveReceipt($event)"
+    />}
+    @if (showAppointmentDetail) {
+    <app-appointment-detail
+      [appointment]="appointment()"
+      (close)="showAppointmentDetail = false; opacity = 1"
+      (update)="updateAppointment($event)"
+      (delete)="delete($event)"
+      (addReceipt)="formReceipt($event)"
     />}
   `,
   styles: `
@@ -210,54 +212,47 @@ error-message {
 }
   `,
 })
-export class AppointmentListComponent implements OnInit, OnDestroy {
+export class ReceiptListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  receipt: Receipt | undefined;
+  receipt = computed(() => this.dataService.receipt());
   customers = computed(() => this.dataService.customers());
   appointment = computed(() => this.dataService.appointment());
-  appointments = computed(() => this.dataService.appointments());
-  appointmentPagination = computed(() =>
-    this.dataService.appointmentPagination()
-  );
+  receipts = computed(() => this.dataService.receipts());
+  receiptPagination = computed(() => this.dataService.receiptPagination());
 
   // Computed per le righe ottimizzato
   righeComputed = computed(() => {
-    const appointments = this.appointments();
+    const receipts = this.receipts();
     if (
-      !appointments ||
-      !Array.isArray(appointments) ||
-      appointments.length === 0
+      !receipts ||
+      !Array.isArray(receipts) ||
+      receipts.length === 0
     ) {
       return [];
     }
 
-    return appointments.map((appointment) => ({
-      id: appointment.id,
-      customerName: `${appointment.customer?.name || ''} ${
-        appointment.customer?.surname || ''
-      }`.trim(),
-      date: new Date(appointment.date).toLocaleDateString('it-IT', {
+    return receipts.map((receipt) => ({
+      id: receipt.id,
+      customerName: `${receipt.customerName || ''} ${receipt.customerSurname || ''}`.trim(),
+      date: new Date(receipt.date).toLocaleDateString('it-IT', { // Questo è 'Giorno'
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
       }),
-      time: new Date(appointment.date).toLocaleTimeString('it-IT', {
-        hour: '2-digit',
-        minute: '2-digit',
-      }),
-      duration: appointment.duration + ' min',
-      phoneNumber: appointment.customer?.phoneNumber || '',
+      total: receipt.total + ' €' || 0 ,
+      appointmentId: receipt.appointmentId || 0,      // Questa è 'Id-App.'
+      fullData: receipt // Oggetto receipt originale
     }));
   });
 
-  colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Ora', 'Durata', 'Telefono'];
+  colonne: string[] = ['Id', 'Cliente', 'Giorno', 'Totale', 'Id-App.'];
   nameInput = new FormControl('');
   showAppointmentDetail = false;
   showCustomerDetail = false;
   showReceipt = false;
- showAlertModal = signal(false); // Changed to signal
-   message = signal(''); 
-  deletingAppointmentId: number | null = null;
+  showAlertModal = signal(false); // Changed to signal
+  message = signal(''); // Changed to signal
+  deletingReceiptId: number | null = null;
   opacity = 1;
   currentPageSize = 10;
   @ViewChild(TableComponent) tableComponent!: TableComponent;
@@ -277,32 +272,36 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       end: new FormControl(),
     });
 
-    effect(() => {
-      const a = this.dataService.appointment();
-      if (
-        this.deletingAppointmentId != null &&
-        a.id === this.deletingAppointmentId
-      ) {
-        let formattedDate = 'data sconosciuta';
-        if (a.date) {
-          try {
-            const appointmentDate = new Date(a.date);
-            formattedDate = appointmentDate.toLocaleDateString('it-IT', {
-              year: 'numeric',
-              month: '2-digit',
-              day: '2-digit',
-            });
-          } catch (error) {
-            console.error('Errore nella formattazione della data', error);
+    effect(
+      () => {
+        const r = this.dataService.receipt();
+        if (
+          this.deletingReceiptId != null &&
+          r && // Assicurati che r non sia null (dal reset in DataService)
+          r.id === this.deletingReceiptId
+        ) {
+          let formattedDate = 'data sconosciuta';
+          if (r.date) {
+            try {
+              const receiptDate = new Date(r.date);
+              formattedDate = receiptDate.toLocaleDateString('it-IT', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+              });
+            } catch (error) {
+              console.error('Errore nella formattazione della data', error);
+            }
           }
+          this.message.set(
+            `Sei sicuro di voler eliminare la ricevuta di ${r.customerName} ${r.customerSurname} del ${formattedDate}?`
+          ); // Set signal
+          this.showAlertModal.set(true); // Set signal
+          this.deletingReceiptId = null;
         }
-        this.message.set( `Sei sicuro di voler eliminare l' appuntamento di ${a.customer?.name} ${a.customer?.surname} del ${formattedDate}?`);
-        this.showAlertModal.set(true);
-        this.deletingAppointmentId = null;
-      }
-    },
+      },
       { allowSignalWrites: true }
-    ); 
+    ); // <--- AGGIUNGI QUESTO
   }
 
   ngOnInit(): void {
@@ -339,7 +338,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     if (value !== '') {
       this.dataService.getAllDataPaginated(
         value,
-        DataType.APPOINTMENT,
+        DataType.RECEIPT,
         1,
         this.pagSize,
         CustomerSearchType.ID,
@@ -348,7 +347,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     } else {
       this.dataService.getAllDataPaginated(
         'retrieveAll/paginated',
-        DataType.APPOINTMENT,
+        DataType.RECEIPT,
         1,
         this.pagSize,
         CustomerSearchType.ID,
@@ -357,22 +356,16 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     }
   }
 
-  get righe(): TableAppointment[] {
+  get righe() {
     // Deprecato - usa righeComputed() invece
     return this.righeComputed();
   }
 
-  formInsertAppointment() {
-    this.showAppointmentDetail = true;
-    this.dataService.appointment.set({} as TableAppointment);
-    this.opacity = 0.5;
-  }
-
-  delete(idAppontment: number) {
-    this.deletingAppointmentId = idAppontment;
+  delete(receiptId: number) {
+    this.deletingReceiptId = receiptId;
     this.dataService.getDataById(
-      DataType[DataType.APPOINTMENT].toLowerCase(),
-      idAppontment
+      DataType[DataType.RECEIPT].toLowerCase(),
+      receiptId
     );
     this.opacity = 0.5;
   }
@@ -380,11 +373,13 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
   confirmDeleting(event: boolean) {
     if (event) {
       this.dataService.deleteData(
-        DataType[DataType.APPOINTMENT].toLowerCase(),
-        this.appointment().id
+        DataType[DataType.RECEIPT].toLowerCase(),
+        this.receipt()?.id || 0 // Usa optional chaining e un fallback
       );
     }
-    this.showAlertModal.set(false);
+    this.showAlertModal.set(false); // Set signal
+    this.deletingReceiptId = null;
+    this.showReceipt = false;
     this.opacity = 1;
   }
 
@@ -410,7 +405,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       let endpoint = this.getSearchEndpoint();
       this.dataService.getAllDataPaginated(
         endpoint,
-        DataType.APPOINTMENT,
+        DataType.RECEIPT,
         1, // Torna sempre alla prima pagina quando cambiano i filtri
         this.pagSize,
         CustomerSearchType.ID,
@@ -421,7 +416,7 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       let endpoint = this.getSearchEndpoint();
       this.dataService.getAllDataPaginated(
         endpoint,
-        DataType.APPOINTMENT,
+        DataType.RECEIPT,
         1,
         this.pagSize,
         CustomerSearchType.ID,
@@ -430,91 +425,95 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     }
   }
 
-  updateAppointment(appointment: Appointment) {
-    if (!appointment) return;
-    if (!appointment.id) {
+  saveReceipt(receipt: Receipt) {
+    if (!receipt) return;
+
+    if (!receipt.id) {
       this.dataService.insertData(
-        DataType[DataType.APPOINTMENT].toLowerCase(),
-        appointment
+        DataType[DataType.RECEIPT].toLowerCase(),
+        receipt
       );
     } else {
       this.dataService.updateData(
-        DataType[DataType.APPOINTMENT].toLowerCase(),
-        appointment.id,
-        appointment
+        DataType[DataType.RECEIPT].toLowerCase(),
+        receipt.id,
+        receipt
       );
     }
-    this.showAppointmentDetail = false;
+
+    this.showReceipt = false;
     this.opacity = 1;
   }
 
-  infoAppointment(idAppontment: number) {
+  infoReceipt(receiptId: number) {
     this.dataService.getDataById(
-      DataType[DataType.APPOINTMENT].toLowerCase(),
-      idAppontment
+      DataType[DataType.RECEIPT].toLowerCase(),
+      receiptId
     );
-    this.showAppointmentDetail = true;
+    this.showReceipt = true;
     this.opacity = 0.5;
   }
 
   nextPage() {
     if (!this.authService.isAuthenticated()) return;
-    
+
     let endpoint = this.getSearchEndpoint();
     this.dataService.getAllDataPaginated(
       endpoint,
-      DataType.APPOINTMENT,
-      this.appointmentPagination().currentPage + 1,
+      DataType.RECEIPT,
+      this.receiptPagination().currentPage + 1,
       this.pagSize,
-      this.appointmentPagination().sortBy,
-      this.appointmentPagination().sortDirection
+      this.receiptPagination().sortBy,
+      this.receiptPagination().sortDirection
     );
   }
 
   prevPage() {
     if (!this.authService.isAuthenticated()) return;
-    
+
     let endpoint = this.getSearchEndpoint();
     this.dataService.getAllDataPaginated(
       endpoint,
-      DataType.APPOINTMENT,
-      this.appointmentPagination().currentPage - 1,
+      DataType.RECEIPT,
+      this.receiptPagination().currentPage - 1,
       this.pagSize,
-      this.appointmentPagination().sortBy,
-      this.appointmentPagination().sortDirection
+      this.receiptPagination().sortBy,
+      this.receiptPagination().sortDirection
     );
   }
 
   orderBy(col: string) {
     let colIndex: number = 0;
-    let endpoint = this.getSearchEndpoint(); // Usa l'endpoint corrente invece di 'retrieveAll/paginated'
-    
+    let endpoint = this.getSearchEndpoint();
+
     switch (col) {
       case 'Id':
         colIndex = 0;
         break;
-      case 'Giorno':
+      case 'Cliente':
         colIndex = 1;
         break;
-      case 'Cliente':
+      case 'Giorno':
         colIndex = 2;
         break;
-      case 'Durata':
+      case 'Totale':
         colIndex = 4;
         break;
+      default:
+        colIndex = 0;
     }
-    
+
     // Ottieni la direzione corrente e invertila
-    const currentDirection = this.appointmentPagination().sortDirection;
-    const newDirection = currentDirection === CustomerSearchDirection.ASC
-      ? CustomerSearchDirection.DESC
-      : CustomerSearchDirection.ASC;
-    
-    console.log('Appointment OrderBy - Column:', col, 'Index:', colIndex, 'Current Direction:', currentDirection, 'New Direction:', newDirection, 'Endpoint:', endpoint);
+    const currentDirection = this.receiptPagination().sortDirection;
+    const newDirection =
+      currentDirection === CustomerSearchDirection.ASC
+        ? CustomerSearchDirection.DESC
+        : CustomerSearchDirection.ASC;
+
     
     this.dataService.getAllDataPaginated(
-      endpoint, // Usa l'endpoint con filtri
-      DataType.APPOINTMENT,
+      endpoint,
+      DataType.RECEIPT,
       1,
       this.pagSize,
       colIndex,
@@ -531,11 +530,11 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
 
     this.dataService.getAllDataPaginated(
       endpoint,
-      DataType.APPOINTMENT,
+      DataType.RECEIPT,
       1,
       this.pagSize,
-      this.appointmentPagination().sortBy,
-      this.appointmentPagination().sortDirection
+      this.receiptPagination().sortBy,
+      this.receiptPagination().sortDirection
     );
   }
 
@@ -543,11 +542,11 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     let endpoint = this.getSearchEndpoint();
     this.dataService.getAllDataPaginated(
       endpoint,
-      DataType.APPOINTMENT,
-      this.appointmentPagination().totalPages,
+      DataType.RECEIPT,
+      this.receiptPagination().totalPages,
       this.pagSize,
-      this.appointmentPagination().sortBy,
-      this.appointmentPagination().sortDirection
+      this.receiptPagination().sortBy,
+      this.receiptPagination().sortDirection
     );
   }
 
@@ -576,8 +575,34 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
     return 'retrieveAll/paginated';
   }
 
+  infoApp(appointmentId: number) {
+    this.dataService.getDataById(
+      DataType[DataType.APPOINTMENT].toLowerCase(),
+      appointmentId
+    );
+    this.showAppointmentDetail = true;
+    this.opacity = 0.5;
+      }
+
+       updateAppointment(appointment: Appointment) {
+    if (!appointment) return;
+    if (!appointment.id) {
+      this.dataService.insertData(
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        appointment
+      );
+    } else {
+      this.dataService.updateData(
+        DataType[DataType.APPOINTMENT].toLowerCase(),
+        appointment.id,
+        appointment
+      );
+    }
+    this.showAppointmentDetail = false;
+    this.opacity = 1;
+  }
   formReceipt(appointment: TableAppointment) {
-    this.receipt = {
+    this.dataService.receipt.set({
       notes: appointment.notes || '',
       services: appointment.services || [],
       total: 0,
@@ -590,32 +615,11 @@ export class AppointmentListComponent implements OnInit, OnDestroy {
       customerPhoneNumber: appointment.customer?.phoneNumber || '',
       appointmentId: appointment.id,
       appointmentDate: appointment.date,
-      date: new Date().toISOString(),
-    }; 
+      date: new Date().toISOString(),} as Receipt);
     
     this.showReceipt = true;
     this.showAppointmentDetail = false;
     this.opacity = 0.5;  
   }
-
-  saveReceipt(receipt: Receipt) {
-
-    if (!receipt) return;
-
-    if (!receipt.id) {
-      this.dataService.insertData(
-        DataType[DataType.RECEIPT].toLowerCase(),
-        receipt
-      );
-    } else {
-      this.dataService.updateData(
-        DataType[DataType.RECEIPT].toLowerCase(),
-        receipt.id,
-        receipt
-      );
-    }
-
-    this.showReceipt = false;    
-    this.opacity = 1;  
-  }
+  
 }

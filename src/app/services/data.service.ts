@@ -5,6 +5,7 @@ import { API_URL, DataType } from '../models/constants';
 import { Appointment, TableAppointment } from '../models/appointment';
 import { map } from 'rxjs';
 import { PaginationInfo } from '../models/paginationInfo';
+import { Receipt } from '../models/receipt';
 
 @Injectable({
   providedIn: 'root',
@@ -14,7 +15,9 @@ export class DataService {
   customer = signal<Customer>({} as Customer);
   customerPagination = signal<PaginationInfo>({} as PaginationInfo);
   appointmentPagination = signal<PaginationInfo>({} as PaginationInfo);
-  
+  receipts = signal<Receipt[]>([]);
+  receipt = signal<Receipt>({} as Receipt);
+  receiptPagination = signal<PaginationInfo>({} as PaginationInfo);
   appointments = signal<TableAppointment[]>([]);
   appointment = signal<TableAppointment>({} as TableAppointment);
   filtredAppointments = signal<TableAppointment[]>([]);
@@ -27,7 +30,7 @@ export class DataService {
   // Metodo semplificato per ottenere customers (per autocomplete)
   getCustomersForAutocomplete() {
     return this.http.get<Customer[]>(`${API_URL}/customer/retrieveAll`).pipe(
-      map(customers => {
+      map((customers) => {
         this.customers.set(customers);
         return customers;
       })
@@ -42,20 +45,36 @@ export class DataService {
     sortBy: number,
     sortDir: number
   ) {
+    console.log(`Making request: ${API_URL}/${type}/${endpoint}?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`);
+    
     this.http
       .get<any>(
         `${API_URL}/${type}/${endpoint}?page=${page}&size=${size}&sortBy=${sortBy}&sortDir=${sortDir}`
       )
       .pipe(
         map((response) => {
+          console.log('Response received:', response);
+          
           if (type === DataType.CUSTOMER) {
             this.customers.set(response.data);
-            this.customerPagination.set(response.pagination);
-            console.log('Customers fetched successfully:', response);
+            // Forza l'aggiornamento della paginazione con i valori corretti
+            const updatedPagination = {
+              ...response.pagination,
+              sortBy: sortBy,
+              sortDirection: sortDir
+            };
+            this.customerPagination.set(updatedPagination);
+            console.log('Customers fetched successfully. Pagination updated:', updatedPagination);
           }
           if (type === DataType.APPOINTMENT) {
             this.appointments.set([]);
-            this.appointmentPagination.set(response.pagination);
+            // Forza l'aggiornamento della paginazione con i valori corretti
+            const updatedPagination = {
+              ...response.pagination,
+              sortBy: sortBy,
+              sortDirection: sortDir
+            };
+            this.appointmentPagination.set(updatedPagination);
             response.data.forEach((appointment: Appointment) => {
               this.http
                 .get<Customer>(`${API_URL}/0/${appointment.customerId}`)
@@ -76,20 +95,32 @@ export class DataService {
                     ]);
                   },
                   error: (error) => {
-                    this.handleError(error, 'Error fetching customer for appointment');
+                    this.handleError(
+                      error,
+                      'Error fetching customer for appointment'
+                    );
                   },
                 });
-            });           
+            });
+            console.log('Appointments fetched successfully. Pagination updated:', updatedPagination);
+          }
+          if (type === DataType.RECEIPT) {
+            this.receipts.set(response.data);
+            // Assicurati che receiptPagination sia aggiornato con i dati corretti
+            const updatedPagination = {
+              ...response.pagination,
+              sortBy: sortBy,        // Forza l'aggiornamento
+              sortDirection: sortDir  // Forza l'aggiornamento
+            };
+            this.receiptPagination.set(updatedPagination);
+            console.log('Receipts fetched successfully. Pagination updated:', updatedPagination);
           }
         })
       )
       .subscribe({
-        next: () => {
-          // Success handled in map
-        },
         error: (error) => {
           this.handleError(error, 'Error in getAllDataPaginated');
-        }
+        },
       });
   }
 
@@ -123,7 +154,10 @@ export class DataService {
                   ]);
                 },
                 error: (error) => {
-                  this.handleError(error, 'Error fetching customer for appointment');
+                  this.handleError(
+                    error,
+                    'Error fetching customer for appointment'
+                  );
                 },
               });
           });
@@ -143,6 +177,7 @@ export class DataService {
     this.http.get<any>(`${API_URL}/${type}/${id}`).subscribe({
       next: (response) => {
         if (type === DataType[DataType.CUSTOMER].toLowerCase()) {
+           this.customer.set(null as any); 
           this.customer.set(response);
           console.log('Customer fetched successfully:', this.customer());
         }
@@ -162,9 +197,18 @@ export class DataService {
                 this.appointment.set(tableAppointment);
               },
               error: (error) => {
-                this.handleError(error, 'Error fetching customer for appointment');
+                this.handleError(
+                  error,
+                  'Error fetching customer for appointment'
+                );
               },
             });
+        }
+        if (type === DataType[DataType.RECEIPT].toLowerCase()) {
+          // Imposta prima a null per garantire che il signal cambi anche se la response è identica
+          this.receipt.set(null as any); // o un valore placeholder diverso
+          this.receipt.set(response);
+          console.log('Receipt fetched successfully:', this.receipt());
         }
 
         console.log('Data loaded successfully');
@@ -207,7 +251,10 @@ export class DataService {
                 );
               },
               error: (error) => {
-                this.handleError(error, 'Error fetching customer for updated appointment');
+                this.handleError(
+                  error,
+                  'Error fetching customer for updated appointment'
+                );
               },
             });
 
@@ -249,12 +296,22 @@ export class DataService {
                 ]);
               },
               error: (error) => {
-                this.handleError(error, 'Error fetching customer for new appointment');
+                this.handleError(
+                  error,
+                  'Error fetching customer for new appointment'
+                );
               },
             });
 
           this.messaggioSuccesso.set('Appuntamento inserito con successo');
           console.log('Appointment inserted successfully:', response);
+        }
+        if (type === DataType[DataType.RECEIPT].toLowerCase()) {
+         
+              this.receipts.set([...this.receipts(), response]);
+              this.messaggioSuccesso.set('Ricevuta inserita con successo');
+              console.log('Receipt inserted successfully:', response);
+           
         }
       },
       error: (error) => {
@@ -280,6 +337,13 @@ export class DataService {
           this.messaggioSuccesso.set('Appuntamento eliminato con successo');
           console.log('Appointment deleted successfully:', response);
         }
+        if (type === DataType[DataType.RECEIPT].toLowerCase()) {
+          this.receipts.set(
+            this.receipts().filter((receipt) => receipt.id !== id)
+          );
+          this.messaggioSuccesso.set('Ricevuta eliminata con successo');
+          console.log('Receipt deleted successfully:', response);
+        }
       },
       error: (error) => {
         this.handleError(error, 'Error deleting data');
@@ -290,9 +354,9 @@ export class DataService {
   // Metodo centralizzato per la gestione degli errori
   public handleError(error: any, context: string): void {
     console.error(`${context}:`, error);
-    
+
     let errorMessage = 'Si è verificato un errore';
-    
+
     try {
       // Gestione robusta dei diversi formati di errore
       if (error?.error?.message) {
@@ -325,9 +389,8 @@ export class DataService {
       console.error('Error parsing error message:', e);
       errorMessage = 'Si è verificato un errore imprevisto';
     }
-    
+
     this.messaggioErrore.set(errorMessage);
     console.error('Processed error message:', errorMessage);
   }
 }
-

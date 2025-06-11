@@ -21,7 +21,7 @@ import { AlertModalComponent } from "./components/alert-modal.component";
   styles: [],
 })
 export class AppComponent {
-  title = 'salonFT';
+  title = 'Il tuo Salone';
   messaggioErrore = computed(() => this.dataService.messaggioErrore());
   messaggioSuccesso = computed(() => this.dataService.messaggioSuccesso());
   constructor(private dataService: DataService) {   
